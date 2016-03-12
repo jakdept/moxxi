@@ -54,22 +54,22 @@ func writeConf(config siteParams, confPath, confExt string, templ template.Templ
 	}
 
 	if err == os.ErrPermission {
-		return "", LocErr{Code: ErrFilePerm, Args: []string{fileName, err.Error()}}
+		return "", &LocErr{Code: ErrFilePerm, fileName: fileName, deepErr: err}
 	}
 
 	if err != nil {
-		return "", LocErr{Code: ErrFileUnexpect, Args: []string{fileName, err.Error()}}
+		return "", &LocErr{Code: ErrFileUnexpect, fileName: fileName, deepErr: err}
 	}
 
 	templErr := templ.Execute(out, config)
 
 	if err = out.Close(); err != nil {
-		return "", LocErr{Code: ErrCloseFile, Args: []string{fileName, err.Error()}}
+		return "", &LocErr{Code: ErrCloseFile, fileName: fileName, deepErr: err}
 	}
 
 	if templErr != nil {
 		if err = os.Remove(fileName); err != nil {
-			return "", LocErr{Code: ErrRemoveFile, Args: []string{fileName, err.Error()}}
+			return "", &LocErr{Code: ErrRemoveFile, fileName: fileName, deepErr: err}
 		}
 	}
 

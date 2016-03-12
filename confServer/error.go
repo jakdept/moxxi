@@ -4,13 +4,14 @@ import "fmt"
 
 // LocErr - the type used within my application for error handling
 type LocErr struct {
-	Code int
-	Args []interface{}
+	Code     int
+	fileName string
+	deepErr  error
 }
 
 // the function `Error` to make my custom errors work
 func (e *LocErr) Error() string {
-	return fmt.Sprintf(errMsg[e.Code], e.Args...)
+	return fmt.Sprintf(errMsg[e.Code], e.fileName, e.deepErr)
 }
 
 // assign a unique id to each error
