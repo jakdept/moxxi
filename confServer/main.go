@@ -36,7 +36,6 @@ func randSeqFeeder(baseURL string, length int, feeder chan<- string, done <-chan
 	}
 }
 
-// TODO: standardize the errors in this function
 func writeConf(config siteParams, confPath, confExt string, templ template.Template, randHost <-chan string) (string, error) {
 
 	// set up the filename once
