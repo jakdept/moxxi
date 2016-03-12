@@ -1,67 +1,77 @@
 package main
 
 import (
-	"crypto/rand"
-	"flag"
+	// "crypto/rand"
+	// "flag"
 	"github.com/dchest/uniuri"
-	"net/http"
-	"net/url"
+	"os"
+	"strings"
+	// "net/http"
+	// "net/url"
 	"text/template"
 )
 
 type siteParams struct {
 	ExtHost string
 	IntHost string
-	IntIP   net.IP
+	IntIP   string
 }
 
 // persistently runs and feeds back random URLs.
 // To be started concurrently.
 func randSeqFeeder(baseURL string, length int, feeder chan<- string, done <-chan struct{}) {
 
-	const chars = []bytes("abcdeefghijklmnopqrstuvwxyz")
+	var chars = []byte("abcdeefghijklmnopqrstuvwxyz")
 	defer close(feeder)
-	rand.Seed(time.New().UnixNano())
-	newURL := urluri.NewLenChars(length, chars) + "." + baseURL
+	//rand.Seed(time.New().UnixNano())
+	newURL := uniuri.NewLenChars(length, chars) + "." + baseURL
 
 	for {
 		select {
 		case <-done:
 			return
 		case feeder <- newURL:
-			newURL = urluri.NewLenChars(length, chars) + "." + baseURL
+			newURL = uniuri.NewLenChars(length, chars) + "." + baseURL
 		}
 	}
 }
 
 // TODO: standardize the errors in this function
-func writeConf(config siteParams, confPath, confExt string, templ template.Template, randHost <-chan string) error {
+func writeConf(config siteParams, confPath, confExt string, templ template.Template, randHost <-chan string) (string, error) {
 
 	// set up the filename once
 	config.ExtHost = <-randHost
-	fileName := strings.TrimRight(confPath, os.PathSeperator)
-	fileName += os.PathSeperator + ExtHost + confExt
+	fileName := strings.TrimRight(confPath, PathSep)
+	fileName += PathSep + config.ExtHost + confExt
 	out, err := os.Create(fileName)
 
 	// if you get an filename exists error, keep doing it until you don't
-	for err != nil && os.IsExist(err) {
+	for err == nil && os.IsExist(err) {
 		config.ExtHost = <-randHost
-		fileName = strings.TrimRight(confPath, os.PathSeperator)
-		fileName += os.PathSeperator + ExtHost + confExt
+		fileName = strings.TrimRight(confPath, PathSep)
+		fileName += PathSep + config.ExtHost + confExt
 		out, err = os.Create(fileName)
 	}
 
-	templErr = templ.Execute(out, config)
+	if err == os.ErrPermission {
+		return "", LocErr{Code: ErrFilePerm, Args: []string{fileName, err.Error()}}
+	}
 
-	if deepErr := f.Close(); deepErr != nil {
-		return fmt.Errorf("failed close the file [%s] - %v,", err, fileName)
+	if err != nil {
+		return "", LocErr{Code: ErrFileUnexpect, Args: []string{fileName, err.Error()}}
+	}
+
+	templErr := templ.Execute(out, config)
+
+	if err = out.Close(); err != nil {
+		return "", LocErr{Code: ErrCloseFile, Args: []string{fileName, err.Error()}}
 	}
 
 	if templErr != nil {
-		if deepErr := os.Remove(fileName); deepErr != nil {
-			return LocErr{ErrCode: ErrRemoveFile, Args: []string{filename, err}}
+		if err = os.Remove(fileName); err != nil {
+			return "", LocErr{Code: ErrRemoveFile, Args: []string{fileName, err.Error()}}
 		}
 	}
 
-	return nil, fileName
+	return config.ExtHost, nil
 }
