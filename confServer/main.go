@@ -11,12 +11,6 @@ import (
 	"text/template"
 )
 
-type siteParams struct {
-	ExtHost string
-	IntHost string
-	IntIP   string
-}
-
 // persistently runs and feeds back random URLs.
 // To be started concurrently.
 func randSeqFeeder(baseURL string, length int, feeder chan<- string, done <-chan struct{}) {
@@ -36,7 +30,34 @@ func randSeqFeeder(baseURL string, length int, feeder chan<- string, done <-chan
 	}
 }
 
-func writeConf(config siteParams, confPath, confExt string, templ template.Template, randHost <-chan string) (string, error) {
+func validHost(s string) string {
+	s = strings.Trim(s, ".")
+	parts := len(strings.Split(s, "."))
+	if parts < 2 {
+		return ""
+	}
+	return s
+}
+
+func configCheck(host, ip string, destTLS bool, blockedHeaders []string) (siteParams, error) {
+	var conf siteParams
+	if conf.IntHost = validHost(host); conf.IntHost == "" {
+		return nil, &Err{Code: ErrBadHost}
+	}
+
+	tempIP := net.ParseIP(ip)
+	if tempIP == nil {
+		return nil, &Err{Code: ErrBadIP}
+	}
+
+	conf.IntIP = tempIP.String()
+	conf.Encrypted = destTLS
+	conf.StripHeaders = blockedHeaders
+
+	return conf, nil
+}
+
+func writeConf(config siteParams, confPath, confExt string, t template.Template, randHost <-chan string) (string, error) {
 
 	// set up the filename once
 	config.ExtHost = <-randHost
@@ -53,22 +74,22 @@ func writeConf(config siteParams, confPath, confExt string, templ template.Templ
 	}
 
 	if err == os.ErrPermission {
-		return "", &LocErr{Code: ErrFilePerm, fileName: fileName, deepErr: err}
+		return "", &Err{Code: ErrFilePerm, fileName: fileName, deepErr: err}
 	}
 
 	if err != nil {
-		return "", &LocErr{Code: ErrFileUnexpect, fileName: fileName, deepErr: err}
+		return "", &Err{Code: ErrFileUnexpect, fileName: fileName, deepErr: err}
 	}
 
-	templErr := templ.Execute(out, config)
+	tErr := t.Execute(out, config)
 
 	if err = out.Close(); err != nil {
-		return "", &LocErr{Code: ErrCloseFile, fileName: fileName, deepErr: err}
+		return "", &Err{Code: ErrCloseFile, fileName: fileName, deepErr: err}
 	}
 
-	if templErr != nil {
+	if tErr != nil {
 		if err = os.Remove(fileName); err != nil {
-			return "", &LocErr{Code: ErrRemoveFile, fileName: fileName, deepErr: err}
+			return "", &Err{Code: ErrRemoveFile, fileName: fileName, deepErr: err}
 		}
 	}
 
