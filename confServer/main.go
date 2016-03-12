@@ -59,8 +59,9 @@ func writeConf(config siteParams, confPath, confExt string, templ template.Templ
 
 	if templErr != nil {
 		if deepErr := os.Remove(fileName); deepErr != nil {
-			return fmt.Errorf("failed to create file - %v\nfailed to clean up [%s] - %v",
-				err, fileName, deepErr)
+			return LocErr{ErrCode: ErrRemoveFile, Args: []string{filename, err}}
 		}
 	}
+
+	return nil, fileName
 }
