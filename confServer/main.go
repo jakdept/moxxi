@@ -1,13 +1,10 @@
 package main
 
 import (
-	// "crypto/rand"
-	// "flag"
 	"github.com/dchest/uniuri"
+	"net"
 	"os"
 	"strings"
-	// "net/http"
-	// "net/url"
 	"text/template"
 )
 
@@ -42,12 +39,12 @@ func validHost(s string) string {
 func configCheck(host, ip string, destTLS bool, blockedHeaders []string) (siteParams, error) {
 	var conf siteParams
 	if conf.IntHost = validHost(host); conf.IntHost == "" {
-		return nil, &Err{Code: ErrBadHost}
+		return siteParams{}, &Err{Code: ErrBadHost, value: ip}
 	}
 
 	tempIP := net.ParseIP(ip)
 	if tempIP == nil {
-		return nil, &Err{Code: ErrBadIP}
+		return siteParams{}, &Err{Code: ErrBadIP, value: ip}
 	}
 
 	conf.IntIP = tempIP.String()
@@ -74,22 +71,22 @@ func writeConf(config siteParams, confPath, confExt string, t template.Template,
 	}
 
 	if err == os.ErrPermission {
-		return "", &Err{Code: ErrFilePerm, fileName: fileName, deepErr: err}
+		return "", &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
 	}
 
 	if err != nil {
-		return "", &Err{Code: ErrFileUnexpect, fileName: fileName, deepErr: err}
+		return "", &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
 	}
 
 	tErr := t.Execute(out, config)
 
 	if err = out.Close(); err != nil {
-		return "", &Err{Code: ErrCloseFile, fileName: fileName, deepErr: err}
+		return "", &Err{Code: ErrCloseFile, value: fileName, deepErr: err}
 	}
 
 	if tErr != nil {
 		if err = os.Remove(fileName); err != nil {
-			return "", &Err{Code: ErrRemoveFile, fileName: fileName, deepErr: err}
+			return "", &Err{Code: ErrRemoveFile, value: fileName, deepErr: err}
 		}
 	}
 
