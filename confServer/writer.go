@@ -1,4 +1,4 @@
-package main
+package moxxiConf
 
 import (
 	"github.com/dchest/uniuri"
