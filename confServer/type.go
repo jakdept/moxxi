@@ -7,6 +7,7 @@ import (
 // PathSep is the path seperator used throughout this program
 const PathSep = "/"
 const DomainSep = "."
+const DefaultBackendTLS = false
 
 type siteParams struct {
 	ExtHost      string
