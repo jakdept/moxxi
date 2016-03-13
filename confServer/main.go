@@ -36,7 +36,7 @@ func validHost(s string) string {
 	return s
 }
 
-func configCheck(host, ip string, destTLS bool, blockedHeaders []string) (siteParams, error) {
+func confCheck(host, ip string, destTLS bool, blockedHeaders []string) (siteParams, error) {
 	var conf siteParams
 	if conf.IntHost = validHost(host); conf.IntHost == "" {
 		return siteParams{}, &Err{Code: ErrBadHost, value: ip}
@@ -54,41 +54,43 @@ func configCheck(host, ip string, destTLS bool, blockedHeaders []string) (sitePa
 	return conf, nil
 }
 
-func writeConf(config siteParams, confPath, confExt string, t template.Template, randHost <-chan string) (string, error) {
+func confWrite(confPath, confExt, mainDomain string, t template.Template,
+	randHost <-chan string) func(siteParams) (string, error) {
 
-	// set up the filename once
-	config.ExtHost = <-randHost
-	fileName := strings.TrimRight(confPath, PathSep)
-	fileName += PathSep + config.ExtHost + confExt
-	out, err := os.Create(fileName)
+	return func(config siteParams) (string, error) {
 
-	// if you get an filename exists error, keep doing it until you don't
-	for err == nil && os.IsExist(err) {
-		config.ExtHost = <-randHost
-		fileName = strings.TrimRight(confPath, PathSep)
-		fileName += PathSep + config.ExtHost + confExt
-		out, err = os.Create(fileName)
-	}
+		err := os.ErrExist
+		var randPart, fileName string
+		var f *os.File
 
-	if err == os.ErrPermission {
-		return "", &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
-	}
-
-	if err != nil {
-		return "", &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
-	}
-
-	tErr := t.Execute(out, config)
-
-	if err = out.Close(); err != nil {
-		return "", &Err{Code: ErrCloseFile, value: fileName, deepErr: err}
-	}
-
-	if tErr != nil {
-		if err = os.Remove(fileName); err != nil {
-			return "", &Err{Code: ErrRemoveFile, value: fileName, deepErr: err}
+		for randPart == "" || os.IsExist(err) {
+			randPart = <-randHost
+			fileName = strings.TrimRight(confPath, PathSep) + PathSep
+			fileName += randPart + DomainSep + mainDomain
+			fileName += DomainSep + strings.TrimLeft(confExt, DomainSep)
+			f, err = os.Create(fileName)
 		}
-	}
 
-	return config.ExtHost, nil
+		config.ExtHost = randPart + DomainSep + mainDomain
+
+		if err == os.ErrPermission {
+			return "", &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
+		} else if err != nil {
+			return "", &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
+		}
+
+		tErr := t.Execute(f, config)
+
+		if err = f.Close(); err != nil {
+			return "", &Err{Code: ErrCloseFile, value: fileName, deepErr: err}
+		}
+
+		if tErr != nil {
+			if err = os.Remove(fileName); err != nil {
+				return "", &Err{Code: ErrRemoveFile, value: fileName, deepErr: err}
+			}
+		}
+
+		return config.ExtHost, nil
+	}
 }
