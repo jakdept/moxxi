@@ -2,39 +2,42 @@ package main
 
 import (
 	"net/http"
-	"text/template"
 	"strconv"
+	"text/template"
 )
 
-func QueryHandler(baseURL, confPath, confExt, mainDomain string,
+func FormHandler(baseURL, confPath, confExt, mainDomain string,
 	confTempl, resTempl template.Template,
 	randHost <-chan string, done <-chan struct{}) http.HandlerFunc {
 
 	confWriter := confWrite(confPath, confExt, mainDomain, confTempl, randHost)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		values := r.URL.Query()
+		err := r.ParseForm()
+		if err != nil {
+			http.error(w, err.Error(), http.StatusBadRequest)
+			r.Form = r.URL.Query()
+		}
 		var tls bool
-		var err error
 
-		if len(values["host"]) < 1 {
+		if len(r.Form["host"]) < 1 {
 			http.Error(w, "no provided hostname", http.StatusPreconditionFailed)
 			// TODO some log line?
 			return
 		}
 
-		if len(values["ip"]) < 1 {
+		if len(r.Form["ip"]) < 1 {
 			http.Error(w, "no provided ip", http.StatusPreconditionFailed)
 			// TODO some log line?
 			return
 		}
 
-		if tls, err = strconv.ParseBool(values["tls"][0]); err != nil {
+		if tls, err = strconv.ParseBool(r.Form["tls"][0]); err != nil {
 			tls = DefaultBackendTLS
 		}
 
-		config, err := confCheck(values["host"][0], values["ip"][0], tls,
-			values["blockedHeaders"])
+		config, err := confCheck(r.Form["host"][0], r.Form["ip"][0], tls,
+			r.Form["blockedHeaders"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
 			// TODO some log line?
@@ -56,11 +59,47 @@ func QueryHandler(baseURL, confPath, confExt, mainDomain string,
 	}
 }
 
-func FormHandler(baseURL, confPath, confExt string, subdomainLength int,
-	confTempl, resTempl template.Template, randHost <-chan string,
-	done <-chan struct{}) http.HandlerFunc {
+func JsonHandler(baseURL, confPath, confExt, mainDomain string,
+	confTempl, resTempl template.Template,
+	randHost <-chan string, done <-chan struct{}) http.HandlerFunc {
+
+	confWriter := confWrite(confPath, confExt, mainDomain, confTempl, randHost)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		// r.ParseForm
+
+		var v []struct {
+			host           string
+			ip             string
+			tls            bool
+			blockedHeaders []string
+		}
+
+		err := json.Unmarshal(r.Body, &v)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		for each := range v {
+			config, err := confCheck(each.host, each.ip, each.tls, each.blockedHeaders)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusPreconditionFailed)
+				// TODO some log line?
+				return
+			}
+
+			if config.ExtHost, err = confWriter(config); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				// TODO some log line? or no?
+				return
+			}
+
+			if err = resTempl.Execute(w, config); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				// TODO some long line? or no?
+				return
+			}
+			return
+
+		}
 	}
 }
