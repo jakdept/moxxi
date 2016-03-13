@@ -6,6 +6,7 @@ import (
 	"text/template"
 )
 
+// FormHandler - creates and returns a Handler for both Query and Form requests
 func FormHandler(baseURL, confPath, confExt, mainDomain string,
 	confTempl, resTempl template.Template,
 	randHost <-chan string, done <-chan struct{}) http.HandlerFunc {
@@ -59,7 +60,8 @@ func FormHandler(baseURL, confPath, confExt, mainDomain string,
 	}
 }
 
-func JsonHandler(baseURL, confPath, confExt, mainDomain string,
+// JSONHandler - creates and returns a Handler for JSON body requests
+func JSONHandler(baseURL, confPath, confExt, mainDomain string,
 	confTempl, resTempl template.Template,
 	randHost <-chan string, done <-chan struct{}) http.HandlerFunc {
 

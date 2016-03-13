@@ -6,7 +6,9 @@ import (
 
 // PathSep is the path seperator used throughout this program
 const PathSep = "/"
+// DomainSep is the seperator used between subdomains
 const DomainSep = "."
+// DefaultBackendTLS is the default value to use for TLS
 const DefaultBackendTLS = false
 
 type siteParams struct {
