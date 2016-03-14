@@ -3,6 +3,8 @@ package moxxiConf
 import (
 	"flag"
 	"net/http"
+	"text/template"
+	"log"
 )
 
 func main() {
@@ -12,8 +14,8 @@ func main() {
 	var fileDocroot *HandlerLocFlag
 
 	listen := flag.String("listen", ":8080", "listen address to use")
-	confTempl := flag.String("confTempl", "template.conf", "base templates for the configs")
-	resTempl := flag.String("resTempl", "template.response", "base template for the response")
+	confTemplString := flag.String("confTempl", "template.conf", "base templates for the configs")
+	resTemplString := flag.String("resTempl", "template.response", "base template for the response")
 	baseDomain := flag.String("domain", "", "base domain to add onto")
 	subdomainLength := flag.Int("subLength", 8, "length of subdomain to exclude")
 	excludedDomain := flag.String("excludedDomain", "", "domains to reject")
@@ -27,20 +29,30 @@ func main() {
 
 	flag.Parse()
 
+	confTempl, err := template.ParseFiles(*confTemplString)
+	if err != nil {
+		log.Fatal(err)
+	}
+	resTempl, err := template.ParseFiles(*resTemplString)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var done chan struct{}
 	mux := http.NewServeMux()
 
-	
+	randHost := randSeqFeeder(*baseDomain, *excludedDomain, *subdomainLength, done)
 
 	for _, each := range *jsonHandler {
-		mux.HandleFunc(each, JSONHandler(baseDomain, confLoc, confExt, confTempl, resTempl, randHost))
+		mux.HandleFunc(each, JSONHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
 	}
 
 	for _, each := range *formHandler {
-		mux.HandleFunc(each, JSONHandler(baseDomain, confLoc, confExt, confTempl, resTempl, randHost))
+		mux.HandleFunc(each, JSONHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
 	}
 
 	for i := 0; i < len(*fileHandler); i++ {
-		mux.HandleFunc(*fileHandler[i], http.FileServer(*fileDocroot[i]))
+		mux.Handle(fileHandler.GetOne(i), http.FileServer(http.Dir(fileDocroot.GetOne(i))))
 	}
 
 }

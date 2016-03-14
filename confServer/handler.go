@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"text/template"
 	"encoding/json"
+	"io/ioutil"
 )
 
 // FormHandler - creates and returns a Handler for both Query and Form requests
@@ -77,7 +78,12 @@ func JSONHandler(baseURL, confPath, confExt string,
 			blockedHeaders []string
 		}
 
-		err := json.Unmarshal(r.Body, &v)
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		err = json.Unmarshal(body, &v)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}

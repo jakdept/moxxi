@@ -11,9 +11,9 @@ import (
 // persistently runs and feeds back random URLs.
 // To be started concurrently.
 func randSeqFeeder(baseURL, exclude string, length int,
-	done <-chan struct{}) (chan<- string) {
+	done <-chan struct{}) (<-chan string) {
 
-	var feeder chan<- string
+	var feeder chan string
 
 	go func() {
 	var chars = []byte("abcdeefghijklmnopqrstuvwxyz")
@@ -81,12 +81,11 @@ func confWrite(confPath, confExt string, t template.Template,
 				return "", &Err{Code: ErrNoRandom}
 			}
 			fileName = strings.TrimRight(confPath, PathSep) + PathSep
-			fileName += randPart + DomainSep + mainDomain
-			fileName += DomainSep + strings.TrimLeft(confExt, DomainSep)
+			fileName += randPart + DomainSep + strings.TrimLeft(confExt, DomainSep)
 			f, err = os.Create(fileName)
 		}
 
-		config.ExtHost = randPart + DomainSep + mainDomain
+		config.ExtHost = randPart
 
 		if err == os.ErrPermission {
 			return "", &Err{Code: ErrFilePerm, value: fileName, deepErr: err}

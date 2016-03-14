@@ -41,7 +41,7 @@ func (e *Err) Error() string {
 	case e.deepErr != nil && e.value != "":
 		return fmt.Sprintf(errMsg[e.Code], e.value, e.deepErr)
 	}
-	return nil
+	return ""
 }
 
 // assign a unique id to each error
@@ -80,4 +80,8 @@ func (f *HandlerLocFlag) Set(value string) error {
 		}
 	}
 	return nil
+}
+
+func (f HandlerLocFlag) GetOne(i int) string {
+	return f[i]
 }
