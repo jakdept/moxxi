@@ -9,10 +9,10 @@ import (
 )
 
 func main() {
-	var jsonHandler *moxxiConf.HandlerLocFlag
-	var formHandler *moxxiConf.HandlerLocFlag
-	var fileHandler *moxxiConf.HandlerLocFlag
-	var fileDocroot *moxxiConf.HandlerLocFlag
+	var jsonHandler moxxiConf.HandlerLocFlag
+	var formHandler moxxiConf.HandlerLocFlag
+	var fileHandler moxxiConf.HandlerLocFlag
+	var fileDocroot moxxiConf.HandlerLocFlag
 
 	listen := flag.String("listen", ":8080", "listen address to use")
 	confTemplString := flag.String("confTempl", "template.conf", "base templates for the configs")
@@ -23,10 +23,10 @@ func main() {
 	confLoc := flag.String("confLoc", "", "path to put the domains")
 	confExt := flag.String("confExt", ".conf", "extension to add to the confs")
 
-	flag.Var(jsonHandler, "jsonHandler", "locations for a JSON handler (multiple)")
-	flag.Var(formHandler, "formHandler", "locations for a form handler (multiple)")
-	flag.Var(fileHandler, "fileHandler", "locations for a file handler (multiple)")
-	flag.Var(fileDocroot, "fileDocroot", "docroots for each file handler (multiple)")
+	flag.Var(&jsonHandler, "jsonHandler", "locations for a JSON handler (multiple)")
+	flag.Var(&formHandler, "formHandler", "locations for a form handler (multiple)")
+	flag.Var(&fileHandler, "fileHandler", "locations for a file handler (multiple)")
+	flag.Var(&fileDocroot, "fileDocroot", "docroots for each file handler (multiple)")
 
 	flag.Parse()
 
@@ -44,19 +44,19 @@ func main() {
 
 	randHost := moxxiConf.RandSeqFeeder(*baseDomain, *excludedDomain, *subdomainLength, done)
 
-	for _, each := range *jsonHandler {
+	for _, each := range jsonHandler {
 		mux.HandleFunc(each, moxxiConf.JSONHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
 	}
 
-	for _, each := range *formHandler {
+	for _, each := range formHandler {
 		mux.HandleFunc(each, moxxiConf.FormHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
 	}
 
-	if len(*fileHandler) != len(*fileDocroot) {
+	if len(fileHandler) != len(fileDocroot) {
 		log.Fatal("mismatch between docroots and filehandlers")
 	}
 
-	for i := 0; i < len(*fileHandler); i++ {
+	for i := 0; i < len(fileHandler); i++ {
 		mux.Handle(fileHandler.GetOne(i), http.FileServer(http.Dir(fileDocroot.GetOne(i))))
 	}
 
