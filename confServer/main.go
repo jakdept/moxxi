@@ -1,17 +1,18 @@
-package moxxiConf
+package main
 
 import (
 	"flag"
 	"log"
 	"net/http"
 	"text/template"
+	"github.com/JackKnifed/moxxi/moxxiconf"
 )
 
 func main() {
-	var jsonHandler *HandlerLocFlag
-	var formHandler *HandlerLocFlag
-	var fileHandler *HandlerLocFlag
-	var fileDocroot *HandlerLocFlag
+	var jsonHandler *moxxiConf.HandlerLocFlag
+	var formHandler *moxxiConf.HandlerLocFlag
+	var fileHandler *moxxiConf.HandlerLocFlag
+	var fileDocroot *moxxiConf.HandlerLocFlag
 
 	listen := flag.String("listen", ":8080", "listen address to use")
 	confTemplString := flag.String("confTempl", "template.conf", "base templates for the configs")
@@ -41,14 +42,14 @@ func main() {
 	var done chan struct{}
 	mux := http.NewServeMux()
 
-	randHost := randSeqFeeder(*baseDomain, *excludedDomain, *subdomainLength, done)
+	randHost := moxxiConf.RandSeqFeeder(*baseDomain, *excludedDomain, *subdomainLength, done)
 
 	for _, each := range *jsonHandler {
-		mux.HandleFunc(each, JSONHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
+		mux.HandleFunc(each, moxxiConf.JSONHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
 	}
 
 	for _, each := range *formHandler {
-		mux.HandleFunc(each, JSONHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
+		mux.HandleFunc(each, moxxiConf.FormHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
 	}
 
 	for i := 0; i < len(*fileHandler); i++ {

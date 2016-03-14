@@ -10,7 +10,7 @@ import (
 
 // persistently runs and feeds back random URLs.
 // To be started concurrently.
-func randSeqFeeder(baseURL, exclude string, length int,
+func RandSeqFeeder(baseURL, exclude string, length int,
 	done <-chan struct{}) <-chan string {
 
 	var feeder chan string
