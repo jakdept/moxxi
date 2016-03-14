@@ -10,8 +10,12 @@ import (
 
 // persistently runs and feeds back random URLs.
 // To be started concurrently.
-func randSeqFeeder(baseURL, exclude string, length int, feeder chan<- string, done <-chan struct{}) {
+func randSeqFeeder(baseURL, exclude string, length int,
+	done <-chan struct{}) (chan<- string) {
 
+	var feeder chan<- string
+
+	go func() {
 	var chars = []byte("abcdeefghijklmnopqrstuvwxyz")
 	defer close(feeder)
 	//rand.Seed(time.New().UnixNano())
@@ -31,7 +35,7 @@ func randSeqFeeder(baseURL, exclude string, length int, feeder chan<- string, do
 	}
 	}()
 
-	return feeder, done
+	return feeder
 }
 
 func validHost(s string) string {
