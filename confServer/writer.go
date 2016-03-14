@@ -11,28 +11,28 @@ import (
 // persistently runs and feeds back random URLs.
 // To be started concurrently.
 func randSeqFeeder(baseURL, exclude string, length int,
-	done <-chan struct{}) (<-chan string) {
+	done <-chan struct{}) <-chan string {
 
 	var feeder chan string
 
 	go func() {
-	var chars = []byte("abcdeefghijklmnopqrstuvwxyz")
-	defer close(feeder)
-	//rand.Seed(time.New().UnixNano())
+		var chars = []byte("abcdeefghijklmnopqrstuvwxyz")
+		defer close(feeder)
+		//rand.Seed(time.New().UnixNano())
 
-	var newURL string
+		var newURL string
 
-	for {
-		newURL = uniuri.NewLenChars(length, chars) + "." + baseURL
-		if newURL == exclude {
-			continue
+		for {
+			newURL = uniuri.NewLenChars(length, chars) + "." + baseURL
+			if newURL == exclude {
+				continue
+			}
+			select {
+			case <-done:
+				return
+			case feeder <- newURL:
+			}
 		}
-		select {
-		case <-done:
-			return
-		case feeder <- newURL:
-		}
-	}
 	}()
 
 	return feeder

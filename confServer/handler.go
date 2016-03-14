@@ -1,11 +1,11 @@
 package moxxiConf
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"text/template"
-	"encoding/json"
-	"io/ioutil"
 )
 
 // FormHandler - creates and returns a Handler for both Query and Form requests

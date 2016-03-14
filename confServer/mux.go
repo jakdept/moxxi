@@ -2,9 +2,9 @@ package moxxiConf
 
 import (
 	"flag"
+	"log"
 	"net/http"
 	"text/template"
-	"log"
 )
 
 func main() {
@@ -55,4 +55,12 @@ func main() {
 		mux.Handle(fileHandler.GetOne(i), http.FileServer(http.Dir(fileDocroot.GetOne(i))))
 	}
 
+	srv := http.Server{
+		Addr:         *listen,
+		Handler:      mux,
+		ReadTimeout:  ConnTimeout,
+		WriteTimeout: ConnTimeout,
+	}
+
+	log.Fatal(srv.ListenAndServe())
 }

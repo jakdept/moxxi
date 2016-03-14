@@ -3,6 +3,7 @@ package moxxiConf
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // PathSep is the path seperator used throughout this program
@@ -13,6 +14,9 @@ const DomainSep = "."
 
 // DefaultBackendTLS is the default value to use for TLS
 const DefaultBackendTLS = false
+
+// ConnTimeout is the tiemout to use on the server
+const ConnTimeout = 10 * time.Second
 
 type siteParams struct {
 	ExtHost      string
