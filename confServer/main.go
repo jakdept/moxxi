@@ -40,6 +40,7 @@ func main() {
 	}
 
 	var done chan struct{}
+	defer(close(done))
 	mux := http.NewServeMux()
 
 	randHost := moxxiConf.RandSeqFeeder(*baseDomain, *excludedDomain, *subdomainLength, done)

@@ -61,10 +61,10 @@ const (
 
 // specify the error message for each error
 var errMsg = map[int]string{
-	ErrCloseFile:    "failed to close the file [%s] - %s",
-	ErrRemoveFile:   "failed to remove file [%s] - %s",
-	ErrFilePerm:     "permission denied to create file [%s] - %s",
-	ErrFileUnexpect: "unknown error with file [%s] - %s",
+	ErrCloseFile:    "failed to close the file [%s] - %v",
+	ErrRemoveFile:   "failed to remove file [%s] - %v",
+	ErrFilePerm:     "permission denied to create file [%s] - %v",
+	ErrFileUnexpect: "unknown error with file [%s] - %v",
 	ErrBadHost:      "bad hostname provided [%s]",
 	ErrBadIP:        "bad IP provided [%s]",
 	ErrNoRandom:     "was not given a new random domain - shutting down?",
@@ -74,7 +74,7 @@ var errMsg = map[int]string{
 type HandlerLocFlag []string
 
 func (f HandlerLocFlag) String() string {
-	switch{
+	switch {
 	case len(f) < 1:
 		return ""
 	case len(f) < 2:
