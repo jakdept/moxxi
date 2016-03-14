@@ -14,6 +14,10 @@ func RandSeqFeeder(baseURL, exclude string, length int,
 	done <-chan struct{}) <-chan string {
 
 	var feeder chan string
+	if length < 2 {
+		close(feeder)
+		return feeder
+	}
 
 	go func() {
 		var chars = []byte("abcdeefghijklmnopqrstuvwxyz")

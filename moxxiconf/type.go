@@ -40,12 +40,9 @@ func (e *Err) Error() string {
 		return errMsg[e.Code]
 	case e.deepErr == nil && e.value != "":
 		return fmt.Sprintf(errMsg[e.Code], e.value)
-	case e.deepErr != nil && e.value == "":
-		return fmt.Sprintf(errMsg[e.Code], e.deepErr)
-	case e.deepErr != nil && e.value != "":
+	default:
 		return fmt.Sprintf(errMsg[e.Code], e.value, e.deepErr)
 	}
-	return ""
 }
 
 // assign a unique id to each error
@@ -67,7 +64,7 @@ var errMsg = map[int]string{
 	ErrFileUnexpect: "unknown error with file [%s] - %v",
 	ErrBadHost:      "bad hostname provided [%s]",
 	ErrBadIP:        "bad IP provided [%s]",
-	ErrNoRandom:     "was not given a new random domain - shutting down?",
+	ErrNoRandom:     "was not given a new random domain - shutting down",
 }
 
 // HandlerLocFlag gives a built in way to specify multiple locations to put the same handler
@@ -85,10 +82,8 @@ func (f HandlerLocFlag) String() string {
 }
 
 func (f *HandlerLocFlag) Set(value string) error {
-	for _, path := range strings.Split(value, ",") {
-		if strings.HasPrefix(path, PathSep) {
-			*f = append(*f, path)
-		}
+	if strings.HasPrefix(value, PathSep) {
+		*f = append(*f, value)
 	}
 	return nil
 }

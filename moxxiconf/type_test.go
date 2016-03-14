@@ -3,10 +3,11 @@ package moxxiConf
 import (
 	"errors"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"testing"
 )
 
-func Err_Error_test(t *testing.T) {
+func TestErr_Error(t *testing.T) {
 	fakeError := errors.New("fake error")
 	var testData = []struct {
 		in  Err
@@ -28,36 +29,52 @@ func Err_Error_test(t *testing.T) {
 			Err{ErrBadHost, "/tmp/testfile", nil},
 			"bad hostname provided [/tmp/testfile]",
 		}, {
-			Err{ErrFileUnexpect, "/tmp/testfile", nil},
+			Err{ErrBadIP, "/tmp/testfile", nil},
 			"bad IP provided [/tmp/testfile]",
 		}, {
-			Err{ErrFileUnexpect, "", nil},
+			Err{ErrNoRandom, "", nil},
 			"was not given a new random domain - shutting down",
 		},
 	}
 	for _, test := range testData {
-		assert.Equal(t, test.out, test.in.Error(), "errors should match")
+		testOut := test.in.Error()
+		assert.Equal(t, test.out, testOut, "errors should match")
 	}
 }
 
-func HandlerLocFlag_test(t *testing.T) {
+func TestHandlerLocFlag(t *testing.T) {
 	var testData = []string{
-		"one",
-		"two",
+		"/one",
+		"/two",
 		"three",
-		"four",
+		"/four",
 	}
 
-	var testWork HandlerLocFlag
+	var expected = []string{
+		"/one",
+		"/two",
+		"/four",
+	}
+
+	testWork := new(HandlerLocFlag)
 
 	for _, each := range testData {
-		assert.NoError(t, testWork.Set(each), "there should not have been a problem adding an item")
+		err := testWork.Set(each)
+		assert.NoError(t, err, "there should not have been a problem adding an item")
+		log.Println(each)
 	}
 
-	assert.Equal(t, testData, []string(testWork), "the test input and current value of the test should be equal")
+	// log.Println(testWork)
 
-	for i := 0; i < len(testData); i++ {
-		assert.Equal(t, testData[i], testWork.GetOne(i), "the test input and current value of the test should be equal")
+	assert.Equal(t, "/one /two /four", testWork.String(), "the test input and current value of the test should be equal")
+
+	for i := 0; i < len(expected); i++ {
+		assert.Equal(t, expected[i], testWork.GetOne(i), "one item from the test was incorrect")
 	}
+
+	junkTest := new(HandlerLocFlag)
+	assert.Equal(t, "", junkTest.String(), "should be empty")
+	junkTest.Set("/some/real/junk")
+	assert.Equal(t, "/some/real/junk", junkTest.String(), "should be empty")
 
 }
