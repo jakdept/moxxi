@@ -23,10 +23,10 @@ func main() {
 	confLoc := flag.String("confLoc", "", "path to put the domains")
 	confExt := flag.String("confExt", ".conf", "extension to add to the confs")
 
-	flag.Var(jsonHandler, "jsonHandler", "location for a JSON handler")
-	flag.Var(formHandler, "formHandler", "location for a form handler")
-	flag.Var(fileHandler, "fileHandler", "location for a file handler")
-	flag.Var(fileDocroot, "fileDocroot", "docroots for each file handler")
+	flag.Var(jsonHandler, "jsonHandler", "locations for a JSON handler (multiple)")
+	flag.Var(formHandler, "formHandler", "locations for a form handler (multiple)")
+	flag.Var(fileHandler, "fileHandler", "locations for a file handler (multiple)")
+	flag.Var(fileDocroot, "fileDocroot", "docroots for each file handler (multiple)")
 
 	flag.Parse()
 
@@ -52,6 +52,10 @@ func main() {
 		mux.HandleFunc(each, moxxiConf.FormHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
 	}
 
+	if len(*fileHandler) != len(*fileDocroot) {
+		log.Fatal("mismatch between docroots and filehandlers")
+	}
+
 	for i := 0; i < len(*fileHandler); i++ {
 		mux.Handle(fileHandler.GetOne(i), http.FileServer(http.Dir(fileDocroot.GetOne(i))))
 	}
@@ -59,8 +63,8 @@ func main() {
 	srv := http.Server{
 		Addr:         *listen,
 		Handler:      mux,
-		ReadTimeout:  ConnTimeout,
-		WriteTimeout: ConnTimeout,
+		ReadTimeout:  moxxiConf.ConnTimeout,
+		WriteTimeout: moxxiConf.ConnTimeout,
 	}
 
 	log.Fatal(srv.ListenAndServe())
