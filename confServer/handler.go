@@ -4,19 +4,20 @@ import (
 	"net/http"
 	"strconv"
 	"text/template"
+	"encoding/json"
 )
 
 // FormHandler - creates and returns a Handler for both Query and Form requests
-func FormHandler(baseURL, confPath, confExt, mainDomain string,
+func FormHandler(baseURL, confPath, confExt string,
 	confTempl, resTempl template.Template,
-	randHost <-chan string, done <-chan struct{}) http.HandlerFunc {
+	randHost <-chan string) http.HandlerFunc {
 
-	confWriter := confWrite(confPath, confExt, mainDomain, confTempl, randHost)
+	confWriter := confWrite(confPath, confExt, confTempl, randHost)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
-			http.error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			r.Form = r.URL.Query()
 		}
 		var tls bool
@@ -61,11 +62,11 @@ func FormHandler(baseURL, confPath, confExt, mainDomain string,
 }
 
 // JSONHandler - creates and returns a Handler for JSON body requests
-func JSONHandler(baseURL, confPath, confExt, mainDomain string,
+func JSONHandler(baseURL, confPath, confExt string,
 	confTempl, resTempl template.Template,
-	randHost <-chan string, done <-chan struct{}) http.HandlerFunc {
+	randHost <-chan string) http.HandlerFunc {
 
-	confWriter := confWrite(confPath, confExt, mainDomain, confTempl, randHost)
+	confWriter := confWrite(confPath, confExt, confTempl, randHost)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -81,7 +82,7 @@ func JSONHandler(baseURL, confPath, confExt, mainDomain string,
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		for each := range v {
+		for _, each := range v {
 			config, err := confCheck(each.host, each.ip, each.tls, each.blockedHeaders)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)

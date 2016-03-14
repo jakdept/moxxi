@@ -2,12 +2,15 @@ package moxxiConf
 
 import (
 	"fmt"
+	"strings"
 )
 
 // PathSep is the path seperator used throughout this program
 const PathSep = "/"
+
 // DomainSep is the seperator used between subdomains
 const DomainSep = "."
+
 // DefaultBackendTLS is the default value to use for TLS
 const DefaultBackendTLS = false
 
@@ -28,10 +31,17 @@ type Err struct {
 
 // the function `Error` to make my custom errors work
 func (e *Err) Error() string {
-	if e.deepErr != nil {
+	switch {
+	case e.deepErr == nil && e.value == "":
+		return errMsg[e.Code]
+	case e.deepErr == nil && e.value != "":
+		return fmt.Sprintf(errMsg[e.Code], e.value)
+	case e.deepErr != nil && e.value == "":
+		return fmt.Sprintf(errMsg[e.Code], e.deepErr)
+	case e.deepErr != nil && e.value != "":
 		return fmt.Sprintf(errMsg[e.Code], e.value, e.deepErr)
 	}
-	return fmt.Sprintf(errMsg[e.Code], e.value)
+	return nil
 }
 
 // assign a unique id to each error
@@ -42,6 +52,7 @@ const (
 	ErrFileUnexpect
 	ErrBadHost
 	ErrBadIP
+	ErrNoRandom
 )
 
 // specify the error message for each error
@@ -52,4 +63,21 @@ var errMsg = map[int]string{
 	ErrFileUnexpect: "unknown error with file [%s] - %s",
 	ErrBadHost:      "bad hostname provided [%s]",
 	ErrBadIP:        "bad IP provided [%s]",
+	ErrNoRandom:     "was not given a new random domain - shutting down?",
+}
+
+// HandlerLocFlag gives a built in way to specify multiple locations to put the same handler
+type HandlerLocFlag []string
+
+func (f *HandlerLocFlag) String() string {
+	return strings.Join(*f, " ")
+}
+
+func (f *HandlerLocFlag) Set(value string) error {
+	for _, path := range strings.Split(value, ",") {
+		if strings.HasPrefix(path, PathSep) {
+			*f = append(*f, path)
+		}
+	}
+	return nil
 }

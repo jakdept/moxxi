@@ -10,21 +10,28 @@ import (
 
 // persistently runs and feeds back random URLs.
 // To be started concurrently.
-func randSeqFeeder(baseURL string, length int, feeder chan<- string, done <-chan struct{}) {
+func randSeqFeeder(baseURL, exclude string, length int, feeder chan<- string, done <-chan struct{}) {
 
 	var chars = []byte("abcdeefghijklmnopqrstuvwxyz")
 	defer close(feeder)
 	//rand.Seed(time.New().UnixNano())
-	newURL := uniuri.NewLenChars(length, chars) + "." + baseURL
+
+	var newURL string
 
 	for {
+		newURL = uniuri.NewLenChars(length, chars) + "." + baseURL
+		if newURL == exclude {
+			continue
+		}
 		select {
 		case <-done:
 			return
 		case feeder <- newURL:
-			newURL = uniuri.NewLenChars(length, chars) + "." + baseURL
 		}
 	}
+	}()
+
+	return feeder, done
 }
 
 func validHost(s string) string {
@@ -54,7 +61,7 @@ func confCheck(host, ip string, destTLS bool, blockedHeaders []string) (sitePara
 	return conf, nil
 }
 
-func confWrite(confPath, confExt, mainDomain string, t template.Template,
+func confWrite(confPath, confExt string, t template.Template,
 	randHost <-chan string) func(siteParams) (string, error) {
 
 	return func(config siteParams) (string, error) {
@@ -64,7 +71,11 @@ func confWrite(confPath, confExt, mainDomain string, t template.Template,
 		var f *os.File
 
 		for randPart == "" || os.IsExist(err) {
-			randPart = <-randHost
+			select {
+			case randPart = <-randHost:
+			default:
+				return "", &Err{Code: ErrNoRandom}
+			}
 			fileName = strings.TrimRight(confPath, PathSep) + PathSep
 			fileName += randPart + DomainSep + mainDomain
 			fileName += DomainSep + strings.TrimLeft(confExt, DomainSep)
