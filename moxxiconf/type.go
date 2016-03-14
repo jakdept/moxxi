@@ -73,8 +73,15 @@ var errMsg = map[int]string{
 // HandlerLocFlag gives a built in way to specify multiple locations to put the same handler
 type HandlerLocFlag []string
 
-func (f *HandlerLocFlag) String() string {
-	return strings.Join(*f, " ")
+func (f HandlerLocFlag) String() string {
+	switch{
+	case len(f) < 1:
+		return ""
+	case len(f) < 2:
+		return f[0]
+	default:
+		return strings.Join(f, " ")
+	}
 }
 
 func (f *HandlerLocFlag) Set(value string) error {
