@@ -51,7 +51,7 @@ func validHost(s string) string {
 	return s
 }
 
-func confCheck(host, ip string, destTLS bool, blockedHeaders []string) (siteParams, error) {
+func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, error) {
 	var conf siteParams
 	if conf.IntHost = validHost(host); conf.IntHost == "" {
 		return siteParams{}, &Err{Code: ErrBadHost, value: ip}
@@ -62,6 +62,11 @@ func confCheck(host, ip string, destTLS bool, blockedHeaders []string) (sitePara
 		return siteParams{}, &Err{Code: ErrBadIP, value: ip}
 	}
 
+	conf.IntPort = 80
+	if port > 0 && port < MaxAllowedPort {
+		conf.IntPort = port
+	}
+
 	conf.IntIP = tempIP.String()
 	conf.Encrypted = destTLS
 	conf.StripHeaders = blockedHeaders
@@ -70,9 +75,9 @@ func confCheck(host, ip string, destTLS bool, blockedHeaders []string) (sitePara
 }
 
 func confWrite(confPath, confExt string, t template.Template,
-	randHost <-chan string) func(siteParams) (string, error) {
+	randHost <-chan string) func(siteParams) (siteParams, error) {
 
-	return func(config siteParams) (string, error) {
+	return func(config siteParams) (siteParams, error) {
 
 		err := os.ErrExist
 		var randPart, fileName string
