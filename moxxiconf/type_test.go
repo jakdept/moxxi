@@ -61,10 +61,7 @@ func TestHandlerLocFlag(t *testing.T) {
 	for _, each := range testData {
 		err := testWork.Set(each)
 		assert.NoError(t, err, "there should not have been a problem adding an item")
-		log.Println(each)
 	}
-
-	// log.Println(testWork)
 
 	assert.Equal(t, "/one /two /four", testWork.String(), "the test input and current value of the test should be equal")
 

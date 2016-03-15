@@ -87,7 +87,7 @@ func confWrite(confPath, confExt string, t template.Template,
 			select {
 			case randPart = <-randHost:
 			default:
-				return "", &Err{Code: ErrNoRandom}
+				return siteParams{}, &Err{Code: ErrNoRandom}
 			}
 			fileName = strings.TrimRight(confPath, PathSep) + PathSep
 			fileName += randPart + DomainSep + strings.TrimLeft(confExt, DomainSep)
@@ -97,23 +97,23 @@ func confWrite(confPath, confExt string, t template.Template,
 		config.ExtHost = randPart
 
 		if err == os.ErrPermission {
-			return "", &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
+			return siteParams{}, &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
 		} else if err != nil {
-			return "", &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
+			return siteParams{}, &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
 		}
 
 		tErr := t.Execute(f, config)
 
 		if err = f.Close(); err != nil {
-			return "", &Err{Code: ErrCloseFile, value: fileName, deepErr: err}
+			return siteParams{}, &Err{Code: ErrCloseFile, value: fileName, deepErr: err}
 		}
 
 		if tErr != nil {
 			if err = os.Remove(fileName); err != nil {
-				return "", &Err{Code: ErrRemoveFile, value: fileName, deepErr: err}
+				return siteParams{}, &Err{Code: ErrRemoveFile, value: fileName, deepErr: err}
 			}
 		}
 
-		return config.ExtHost, nil
+		return config, nil
 	}
 }

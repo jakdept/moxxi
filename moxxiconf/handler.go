@@ -39,9 +39,9 @@ func FormHandler(baseURL, confPath, confExt string,
 			tls = DefaultBackendTLS
 		}
 
-		i, _ := strconv.Atoi(r.Form["port"[0]])
+		port, _ := strconv.Atoi(r.Form["port"][0])
 
-		config, err := confCheck(r.Form["host"][0], r.Form["ip"][0], tls,
+		config, err := confCheck(r.Form["host"][0], r.Form["ip"][0], tls, port,
 			r.Form["blockedHeaders"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
@@ -92,7 +92,7 @@ func JSONHandler(baseURL, confPath, confExt string,
 		}
 
 		for _, each := range v {
-			config, err := confCheck(each.host, each.ip, each.tls, each.blockedHeaders)
+			config, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)
 				// TODO some log line?
