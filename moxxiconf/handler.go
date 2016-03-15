@@ -39,6 +39,8 @@ func FormHandler(baseURL, confPath, confExt string,
 			tls = DefaultBackendTLS
 		}
 
+		i, _ := strconv.Atoi(r.Form["port"[0]])
+
 		config, err := confCheck(r.Form["host"][0], r.Form["ip"][0], tls,
 			r.Form["blockedHeaders"])
 		if err != nil {
@@ -47,7 +49,7 @@ func FormHandler(baseURL, confPath, confExt string,
 			return
 		}
 
-		if config.ExtHost, err = confWriter(config); err != nil {
+		if config, err = confWriter(config); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			// TODO some log line? or no?
 			return
@@ -74,6 +76,7 @@ func JSONHandler(baseURL, confPath, confExt string,
 		var v []struct {
 			host           string
 			ip             string
+			port           int
 			tls            bool
 			blockedHeaders []string
 		}
@@ -96,7 +99,7 @@ func JSONHandler(baseURL, confPath, confExt string,
 				return
 			}
 
-			if config.ExtHost, err = confWriter(config); err != nil {
+			if config, err = confWriter(config); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				// TODO some log line? or no?
 				return
