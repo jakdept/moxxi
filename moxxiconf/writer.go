@@ -44,11 +44,18 @@ func RandSeqFeeder(baseURL, exclude string, length int,
 
 func validHost(s string) string {
 	s = strings.Trim(s, ".")
-	parts := len(strings.Split(s, "."))
-	if parts < 2 {
+	parts := strings.Split(s, DomainSep)
+	if len(parts) < 2 {
 		return ""
 	}
-	return s
+	for i := 0; i < len(parts)-1; {
+		if len(parts[i]) < 1 {
+			parts = append(parts[:i], parts[i+1:]...)
+		} else {
+			i++
+		}
+	}
+	return strings.Join(parts, DomainSep)
 }
 
 func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, error) {
