@@ -39,7 +39,8 @@ func FormHandler(baseURL, confPath, confExt string,
 			tls = DefaultBackendTLS
 		}
 
-		config, err := confCheck(r.Form["host"][0], r.Form["ip"][0], tls,
+		port, _ := strconv.Atoi(r.Form["port"][0])
+		config, err := confCheck(r.Form["host"][0], r.Form["ip"][0], tls, port,
 			r.Form["header"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
@@ -47,7 +48,7 @@ func FormHandler(baseURL, confPath, confExt string,
 			return
 		}
 
-		if config.ExtHost, err = confWriter(config); err != nil {
+		if config, err = confWriter(config); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			// TODO some log line? or no?
 			return
@@ -74,6 +75,7 @@ func JSONHandler(baseURL, confPath, confExt string,
 		var v []struct {
 			host           string
 			ip             string
+			port           int
 			tls            bool
 			blockedHeaders []string
 		}
@@ -89,14 +91,14 @@ func JSONHandler(baseURL, confPath, confExt string,
 		}
 
 		for _, each := range v {
-			config, err := confCheck(each.host, each.ip, each.tls, each.blockedHeaders)
+			config, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)
 				// TODO some log line?
 				return
 			}
 
-			if config.ExtHost, err = confWriter(config); err != nil {
+			if config, err = confWriter(config); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				// TODO some log line? or no?
 				return

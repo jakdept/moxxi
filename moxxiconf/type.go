@@ -18,10 +18,14 @@ const DefaultBackendTLS = false
 // ConnTimeout is the tiemout to use on the server
 const ConnTimeout = 10 * time.Second
 
+// MaxAllowedPort is the maximum allowed destination port
+const MaxAllowedPort = 65535
+
 type siteParams struct {
 	ExtHost      string
 	IntHost      string
 	IntIP        string
+	IntPort      int
 	Encrypted    bool
 	StripHeaders []string
 }
