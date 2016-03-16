@@ -3,7 +3,10 @@ package moxxiConf
 import (
 	"github.com/stretchr/testify/assert"
 	// "log"
+	"io/ioutil"
+	"os"
 	"testing"
+	"text/template"
 )
 
 func TestInArr(t *testing.T) {
@@ -119,5 +122,45 @@ func TestConfCheck(t *testing.T) {
 }
 
 func TestConfWrite(t *testing.T) {
+	var testData = []struct {
+		in  siteParams
+		out string
+		err error
+	}{
+		{
+			in: siteParams{
+				IntHost:      "domain.com",
+				IntIP:        "127.0.0.1",
+				IntPort:      80,
+				Encrypted:    true,
+				StripHeaders: []string{"a", "b", "c"},
+			},
+			out: "domain.com 127.0.0.1 80 true a b c ",
+			err: nil,
+		},
+	}
 
+	templPath := os.TempDir()
+	templExt := ".out"
+	baseURL := "domain.com"
+	subdomainLen := 6
+	excludes := []string{"a.domain.com", "b.domain.com", "c.domain.com"}
+	templateString := `{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}} {{ range .StripHeaders }}{{.}} {{end}}`
+	templ := template.Must(template.New("testing").Parse(templateString))
+
+	w := confWrite(templPath, templExt, baseURL, subdomainLen, *templ, excludes)
+
+	var outConf siteParams
+	var err, fileErr error
+	var contents []byte
+
+	for _, test := range testData {
+		outConf, err = w(test.in)
+
+		contents, fileErr = ioutil.ReadFile(templPath + PathSep + outConf.ExtHost + templExt)
+		assert.Nil(t, fileErr, "problem reading file - %v", fileErr)
+
+		assert.Equal(t, test.out, string(contents), "file contents did not match expected")
+		assert.Equal(t, test.err, err, "errors did not match up")
+	}
 }
