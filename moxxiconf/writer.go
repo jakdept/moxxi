@@ -8,9 +8,18 @@ import (
 	"text/template"
 )
 
+func inArr(a []string, t string) bool {
+	for _, s := range a {
+		if t == s {
+			return true
+		}
+	}
+	return false
+}
+
 // persistently runs and feeds back random URLs.
 // To be started concurrently.
-func RandSeqFeeder(baseURL, exclude string, length int,
+func RandSeqFeeder(baseURL string, excludes []string, length int,
 	done <-chan struct{}) <-chan string {
 
 	var feeder chan string
@@ -28,7 +37,7 @@ func RandSeqFeeder(baseURL, exclude string, length int,
 
 		for {
 			newURL = uniuri.NewLenChars(length, chars) + "." + baseURL
-			if newURL == exclude {
+			if inArr(excludes, newURL) {
 				continue
 			}
 			select {
