@@ -54,7 +54,7 @@ func FormHandler(baseURL, confPath, confExt string,
 			return
 		}
 
-		if err = resTempl.Execute(w, config); err != nil {
+		if err = resTempl.Execute(w, []siteParams{config,}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			// TODO some long line? or no?
 			return
@@ -90,6 +90,8 @@ func JSONHandler(baseURL, confPath, confExt string,
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
+		var responseConfig []siteParams
+
 		for _, each := range v {
 			config, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders)
 			if err != nil {
@@ -104,13 +106,13 @@ func JSONHandler(baseURL, confPath, confExt string,
 				return
 			}
 
-			if err = resTempl.Execute(w, config); err != nil {
+			responseConfig = append(responseConfig, config)
+		}
+			if err = resTempl.Execute(w, responseConfig); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				// TODO some long line? or no?
 				return
 			}
 			return
-
-		}
 	}
 }
