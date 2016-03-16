@@ -2,7 +2,7 @@ package moxxiConf
 
 import (
 	"github.com/stretchr/testify/assert"
-	"log"
+	// "log"
 	"testing"
 )
 
@@ -30,33 +30,6 @@ func TestInArr(t *testing.T) {
 		result := inArr(testRun.arr, testRun.target)
 		assert.Equal(t, testRun.out, result, "wrong response - expected %s", testRun.out)
 	}
-}
-
-func TestRandSeqFeeder(t *testing.T) {
-	var testSize = []int{0, 1, 2, 3, 10}
-	var testRepeat = 20
-	var testDomain = "domain.com"
-	var testExclude = []string{"lol.domain.com", "aaa.domain.com"}
-
-	var done chan struct{}
-	var count int
-
-	expectedSize := testSize[0]
-	if expectedSize < 2 {
-		expectedSize = 2
-	}
-	expectedSize += len(testDomain)
-	expectedSize++
-
-	out := RandSeqFeeder(testDomain, testExclude, testSize[0], done)
-
-	for count < testRepeat {
-		log.Println("waiting for domain")
-		log.Println(<-out)
-	}
-
-	done <- struct{}{}
-	close(done)
 }
 
 func TestValidHost(t *testing.T) {

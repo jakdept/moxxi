@@ -21,6 +21,8 @@ const ConnTimeout = 10 * time.Second
 // MaxAllowedPort is the maximum allowed destination port
 const MaxAllowedPort = 65535
 
+var SubdomainChars = []byte("abcdeefghijklmnopqrstuvwxyz")
+
 type siteParams struct {
 	ExtHost      string
 	IntHost      string

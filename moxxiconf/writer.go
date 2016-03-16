@@ -2,7 +2,6 @@ package moxxiConf
 
 import (
 	"github.com/dchest/uniuri"
-	"log"
 	"net"
 	"os"
 	"strings"
@@ -16,44 +15,6 @@ func inArr(a []string, t string) bool {
 		}
 	}
 	return false
-}
-
-// persistently runs and feeds back random URLs.
-// To be started concurrently.
-func RandSeqFeeder(baseURL string, excludes []string, length int,
-	done <-chan struct{}) <-chan string {
-
-	var feeder chan string
-	if length < 2 {
-		length = 2
-	}
-
-	go func() {
-		var chars = []byte("abcdeefghijklmnopqrstuvwxyz")
-		defer close(feeder)
-		//rand.Seed(time.New().UnixNano())
-
-		var newURL string
-
-		for {
-			newURL = uniuri.NewLenChars(length, chars) + "." + baseURL
-			log.Println(newURL)
-			if inArr(excludes, newURL) {
-				continue
-			}
-			log.Println("about to send domain")
-			select {
-			case feeder <- newURL:
-			case <-done:
-				return
-			}
-		}
-	}()
-
-	// burn off one value so the channel is not nil
-	// <-feeder
-
-	return feeder
 }
 
 func validHost(s string) string {
@@ -95,8 +56,8 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 	return conf, nil
 }
 
-func confWrite(confPath, confExt string, t template.Template,
-	randHost <-chan string) func(siteParams) (siteParams, error) {
+func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.Template,
+	excludes []string) func(siteParams) (siteParams, error) {
 
 	return func(config siteParams) (siteParams, error) {
 
@@ -105,10 +66,10 @@ func confWrite(confPath, confExt string, t template.Template,
 		var f *os.File
 
 		for randPart == "" || os.IsExist(err) {
-			select {
-			case randPart = <-randHost:
-			default:
-				return siteParams{}, &Err{Code: ErrNoRandom}
+			randPart = uniuri.NewLenChars(subdomainLen, SubdomainChars) + "." + baseURL
+			// pick again
+			if inArr(excludes, randPart) {
+				continue
 			}
 			fileName = strings.TrimRight(confPath, PathSep) + PathSep
 			fileName += randPart + DomainSep + strings.TrimLeft(confExt, DomainSep)
