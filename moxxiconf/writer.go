@@ -61,7 +61,7 @@ func validHost(s string) string {
 func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, error) {
 	var conf siteParams
 	if conf.IntHost = validHost(host); conf.IntHost == "" {
-		return siteParams{}, &Err{Code: ErrBadHost, value: ip}
+		return siteParams{}, &Err{Code: ErrBadHost, value: host}
 	}
 
 	tempIP := net.ParseIP(ip)
