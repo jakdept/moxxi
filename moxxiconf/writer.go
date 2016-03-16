@@ -59,6 +59,10 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.Template,
 	excludes []string) func(siteParams) (siteParams, error) {
 
+	if subDomainLen < 1 {
+		subdomainLen = 1
+	}
+
 	return func(config siteParams) (siteParams, error) {
 
 		err := os.ErrExist
