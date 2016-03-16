@@ -2,6 +2,7 @@ package moxxiConf
 
 import (
 	"github.com/dchest/uniuri"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -24,8 +25,7 @@ func RandSeqFeeder(baseURL string, excludes []string, length int,
 
 	var feeder chan string
 	if length < 2 {
-		close(feeder)
-		return feeder
+		length = 2
 	}
 
 	go func() {
@@ -37,16 +37,21 @@ func RandSeqFeeder(baseURL string, excludes []string, length int,
 
 		for {
 			newURL = uniuri.NewLenChars(length, chars) + "." + baseURL
+			log.Println(newURL)
 			if inArr(excludes, newURL) {
 				continue
 			}
+			log.Println("about to send domain")
 			select {
+			case feeder <- newURL:
 			case <-done:
 				return
-			case feeder <- newURL:
 			}
 		}
 	}()
+
+	// burn off one value so the channel is not nil
+	// <-feeder
 
 	return feeder
 }

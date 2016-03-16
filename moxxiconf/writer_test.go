@@ -2,6 +2,7 @@ package moxxiConf
 
 import (
 	"github.com/stretchr/testify/assert"
+	"log"
 	"testing"
 )
 
@@ -32,75 +33,30 @@ func TestInArr(t *testing.T) {
 }
 
 func TestRandSeqFeeder(t *testing.T) {
-	var testData = []struct {
-		in      int
-		stopped bool
-	}{
-		{
-			in:      0,
-			stopped: false,
-		}, {
-			in:      1,
-			stopped: false,
-		}, {
-			in:      2,
-			stopped: true,
-		}, {
-			in:      3,
-			stopped: true,
-		}, {
-			in:      10,
-			stopped: true,
-		}, {
-			in:      20,
-			stopped: true,
-		},
-	}
+	var testSize = []int{0, 1, 2, 3, 10}
 	var testRepeat = 20
 	var testDomain = "domain.com"
-	var exclude = []string{"lol.domain.com", "aaa.domain.com"}
+	var testExclude = []string{"lol.domain.com", "aaa.domain.com"}
 
-	for _, test := range testData {
-		var finisher chan struct{}
-		out := RandSeqFeeder(testDomain, exclude, test.in, finisher)
-		finalLength := len(testDomain) + test.in + 1
+	var done chan struct{}
+	var count int
 
-		finishedEarly := false
-		var count int
-
-		// go until we have the minimum number of interations
-		// see if the thread closes itself, or if it feeds data back
-		for count <= testRepeat {
-			select {
-			case s, more := <-out:
-				if !more {
-					finishedEarly = true
-					close(finisher)
-					break
-				}
-				assert.Equal(t, finalLength, len(s), "returned string should be the same length as the input")
-				count++
-			default:
-				t.Fatal("response channel is delayed")
-			}
-		}
-
-		// if the thread did not close early, and the count is correct, close the channel
-		assert.Equal(t, testRepeat, count, "test did not run the correct amount of times")
-
-		if testRepeat == count && !finishedEarly {
-			close(finisher)
-			select {
-			case _, more := <-out:
-				if more {
-					t.Fatal("response channel should be closed, it is not")
-				}
-			default:
-				t.Fatal("response channel is not closed and not responding")
-			}
-		}
-		assert.Equal(t, test.stopped, finishedEarly, "the channel did not behave properly")
+	expectedSize := testSize[0]
+	if expectedSize < 2 {
+		expectedSize = 2
 	}
+	expectedSize += len(testDomain)
+	expectedSize++
+
+	out := RandSeqFeeder(testDomain, testExclude, testSize[0], done)
+
+	for count < testRepeat {
+		log.Println("waiting for domain")
+		log.Println(<-out)
+	}
+
+	done <- struct{}{}
+	close(done)
 }
 
 func TestValidHost(t *testing.T) {
