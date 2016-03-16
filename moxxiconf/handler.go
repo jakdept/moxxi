@@ -40,9 +40,8 @@ func FormHandler(baseURL, confPath, confExt string,
 		}
 
 		port, _ := strconv.Atoi(r.Form["port"][0])
-
 		config, err := confCheck(r.Form["host"][0], r.Form["ip"][0], tls, port,
-			r.Form["blockedHeaders"])
+			r.Form["header"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
 			// TODO some log line?

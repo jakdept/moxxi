@@ -1,0 +1,41 @@
+<html>
+	<head>
+		<title>
+		</title>
+	</head>
+	<body>
+		{{ with . }}
+		<table>
+			{{ range . }}
+			<tr>
+				<td>
+					<a href="{{ .ExtHost }}">{{ .ExtHost }}</a>
+				</td>
+				<td>
+					{{ .IntHost }}
+				</td>
+				<td>
+					{{ .IntIP }}
+				</td>
+				<td>
+					{{ if .Encrypted }}
+					Encryption enabled
+					{{ else }}
+					Encryption disabled
+					{{ end }}
+				</td>
+				{{ with .StripHeaders }}
+				<td>
+					{{ range .StripHeaders }}
+					<div class="killedHeader">
+						{{ . }}
+					</div>
+					{{ end}}
+				</td>
+				{{ end }}
+			</tr>
+			{{ end }}
+		</table>
+		{{ end }}
+	</body>
+</html>
