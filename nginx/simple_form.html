@@ -1,0 +1,49 @@
+
+<html>
+	<head>
+		<title>
+		</title>
+		<script>
+			function addHeaderBox() {
+				var element = document.createElement("input");
+
+				var parent = document.getElementByID("headerLoc");
+				parent.appendChild(element);
+			}
+		</script>
+	</head>
+	<body>
+		<form action="POST" method="post">
+			<table>
+				<tr>
+					<td>
+						<label>Backend Host:</label>
+						<input type="text" name="host">
+					</td>
+					<td>
+						<label>Backend IP:</label>
+						<input type="text" name="ip">
+					</td>
+					<td>
+						<label>Encryption:</label>
+						<input type="checkbox" name="tls">
+					</td>
+					<td>
+						<label>Header:</label>
+						<button type="button" onclick="addHeaderBox()">Add Header</button>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<input type="submit" value="do it">
+					</td>
+					<td colspan="3">
+						<div id="headerLoc">
+							<input type="text" name="header[]">
+						</div>
+					</td>
+				</tr>
+			</table>
+		</form>
+	</body>
+</html>
