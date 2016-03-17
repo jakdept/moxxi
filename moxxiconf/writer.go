@@ -8,53 +8,35 @@ import (
 	"text/template"
 )
 
-// persistently runs and feeds back random URLs.
-// To be started concurrently.
-func RandSeqFeeder(baseURL, exclude string, length int,
-	done <-chan struct{}) <-chan string {
-
-	var feeder chan string
-	if length < 2 {
-		close(feeder)
-		return feeder
-	}
-
-	go func() {
-		var chars = []byte("abcdeefghijklmnopqrstuvwxyz")
-		defer close(feeder)
-		//rand.Seed(time.New().UnixNano())
-
-		var newURL string
-
-		for {
-			newURL = uniuri.NewLenChars(length, chars) + "." + baseURL
-			if newURL == exclude {
-				continue
-			}
-			select {
-			case <-done:
-				return
-			case feeder <- newURL:
-			}
+func inArr(a []string, t string) bool {
+	for _, s := range a {
+		if t == s {
+			return true
 		}
-	}()
-
-	return feeder
+	}
+	return false
 }
 
 func validHost(s string) string {
 	s = strings.Trim(s, ".")
-	parts := len(strings.Split(s, "."))
-	if parts < 2 {
+	parts := strings.Split(s, DomainSep)
+	if len(parts) < 2 {
 		return ""
 	}
-	return s
+	for i := 0; i < len(parts)-1; {
+		if len(parts[i]) < 1 {
+			parts = append(parts[:i], parts[i+1:]...)
+		} else {
+			i++
+		}
+	}
+	return strings.Join(parts, DomainSep)
 }
 
 func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, error) {
 	var conf siteParams
 	if conf.IntHost = validHost(host); conf.IntHost == "" {
-		return siteParams{}, &Err{Code: ErrBadHost, value: ip}
+		return siteParams{}, &Err{Code: ErrBadHost, value: host}
 	}
 
 	tempIP := net.ParseIP(ip)
@@ -74,8 +56,12 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 	return conf, nil
 }
 
-func confWrite(confPath, confExt string, t template.Template,
-	randHost <-chan string) func(siteParams) (siteParams, error) {
+func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.Template,
+	excludes []string) func(siteParams) (siteParams, error) {
+
+	if subdomainLen < 1 {
+		subdomainLen = 1
+	}
 
 	return func(config siteParams) (siteParams, error) {
 
@@ -84,10 +70,10 @@ func confWrite(confPath, confExt string, t template.Template,
 		var f *os.File
 
 		for randPart == "" || os.IsExist(err) {
-			select {
-			case randPart = <-randHost:
-			default:
-				return siteParams{}, &Err{Code: ErrNoRandom}
+			randPart = uniuri.NewLenChars(subdomainLen, SubdomainChars) + "." + baseURL
+			// pick again
+			if inArr(excludes, randPart) {
+				continue
 			}
 			fileName = strings.TrimRight(confPath, PathSep) + PathSep
 			fileName += randPart + DomainSep + strings.TrimLeft(confExt, DomainSep)
@@ -97,9 +83,9 @@ func confWrite(confPath, confExt string, t template.Template,
 		config.ExtHost = randPart
 
 		if err == os.ErrPermission {
-			return siteParams{}, &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
+			return siteParams{ExtHost: randPart}, &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
 		} else if err != nil {
-			return siteParams{}, &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
+			return siteParams{ExtHost: randPart}, &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
 		}
 
 		tErr := t.Execute(f, config)

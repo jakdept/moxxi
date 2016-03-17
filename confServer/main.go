@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
+	"github.com/JackKnifed/moxxi/moxxiconf"
 	"log"
 	"net/http"
 	"text/template"
-	"github.com/JackKnifed/moxxi/moxxiconf"
 )
 
 func main() {
@@ -13,16 +13,17 @@ func main() {
 	var formHandler moxxiConf.HandlerLocFlag
 	var fileHandler moxxiConf.HandlerLocFlag
 	var fileDocroot moxxiConf.HandlerLocFlag
+	var excludedDomains moxxiConf.HandlerLocFlag
 
 	listen := flag.String("listen", ":8080", "listen address to use")
 	confTemplString := flag.String("confTempl", "template.conf", "base templates for the configs")
 	resTemplString := flag.String("resTempl", "template.response", "base template for the response")
 	baseDomain := flag.String("domain", "", "base domain to add onto")
 	subdomainLength := flag.Int("subLength", 8, "length of subdomain to exclude")
-	excludedDomain := flag.String("excludedDomain", "", "domains to reject")
 	confLoc := flag.String("confLoc", "", "path to put the domains")
 	confExt := flag.String("confExt", ".conf", "extension to add to the confs")
 
+	flag.Var(&excludedDomains, "excludedDomain", "domain names to exclude")
 	flag.Var(&jsonHandler, "jsonHandler", "locations for a JSON handler (multiple)")
 	flag.Var(&formHandler, "formHandler", "locations for a form handler (multiple)")
 	flag.Var(&fileHandler, "fileHandler", "locations for a file handler (multiple)")
@@ -39,18 +40,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var done chan struct{}
-	defer close(done)
 	mux := http.NewServeMux()
 
-	randHost := moxxiConf.RandSeqFeeder(*baseDomain, *excludedDomain, *subdomainLength, done)
-
 	for _, each := range jsonHandler {
-		mux.HandleFunc(each, moxxiConf.JSONHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
+		mux.HandleFunc(each, moxxiConf.JSONHandler(*baseDomain, *confLoc, *confExt, *excludedDomains, *confTempl, *resTempl, *subdomainLength))
 	}
 
 	for _, each := range formHandler {
-		mux.HandleFunc(each, moxxiConf.FormHandler(*baseDomain, *confLoc, *confExt, *confTempl, *resTempl, randHost))
+		mux.HandleFunc(each, moxxiConf.FormHandler(*baseDomain, *confLoc, *confExt, *excludedDomains, *confTempl, *resTempl, *subdomainLength))
 	}
 
 	if len(fileHandler) != len(fileDocroot) {

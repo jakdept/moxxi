@@ -9,11 +9,10 @@ import (
 )
 
 // FormHandler - creates and returns a Handler for both Query and Form requests
-func FormHandler(baseURL, confPath, confExt string,
-	confTempl, resTempl template.Template,
-	randHost <-chan string) http.HandlerFunc {
+func FormHandler(baseURL, confPath, confExt string, excludes []string,
+	confTempl, resTempl template.Template, subdomainLen int) http.HandlerFunc {
 
-	confWriter := confWrite(confPath, confExt, confTempl, randHost)
+	confWriter := confWrite(confPath, confExt, baseURL, subdomainLen, confTempl, excludes)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
@@ -54,7 +53,7 @@ func FormHandler(baseURL, confPath, confExt string,
 			return
 		}
 
-		if err = resTempl.Execute(w, []siteParams{config,}); err != nil {
+		if err = resTempl.Execute(w, []siteParams{config}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			// TODO some long line? or no?
 			return
@@ -64,11 +63,10 @@ func FormHandler(baseURL, confPath, confExt string,
 }
 
 // JSONHandler - creates and returns a Handler for JSON body requests
-func JSONHandler(baseURL, confPath, confExt string,
-	confTempl, resTempl template.Template,
-	randHost <-chan string) http.HandlerFunc {
+func JSONHandler(baseURL, confPath, confExt string, excludes []string,
+	confTempl, resTempl template.Template, subdomainLen int) http.HandlerFunc {
 
-	confWriter := confWrite(confPath, confExt, confTempl, randHost)
+	confWriter := confWrite(confPath, confExt, baseURL, subdomainLen, confTempl, excludes)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -108,11 +106,11 @@ func JSONHandler(baseURL, confPath, confExt string,
 
 			responseConfig = append(responseConfig, config)
 		}
-			if err = resTempl.Execute(w, responseConfig); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				// TODO some long line? or no?
-				return
-			}
+		if err = resTempl.Execute(w, responseConfig); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			// TODO some long line? or no?
 			return
+		}
+		return
 	}
 }
