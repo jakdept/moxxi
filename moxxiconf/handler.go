@@ -78,12 +78,8 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 			blockedHeaders []string
 		}
 
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-
-		err = json.Unmarshal(body, &v)
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&v)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -106,6 +102,7 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 
 			responseConfig = append(responseConfig, config)
 		}
+
 		if err = resTempl.Execute(w, responseConfig); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			// TODO some long line? or no?
