@@ -59,7 +59,7 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.Template,
 	excludes []string) func(siteParams) (siteParams, error) {
 
-	if subDomainLen < 1 {
+	if subdomainLen < 1 {
 		subdomainLen = 1
 	}
 
@@ -83,9 +83,9 @@ func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.T
 		config.ExtHost = randPart
 
 		if err == os.ErrPermission {
-			return siteParams{}, &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
+			return siteParams{ExtHost: randPart}, &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
 		} else if err != nil {
-			return siteParams{}, &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
+			return siteParams{ExtHost: randPart}, &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
 		}
 
 		tErr := t.Execute(f, config)

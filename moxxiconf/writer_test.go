@@ -3,6 +3,7 @@ package moxxiConf
 import (
 	"github.com/stretchr/testify/assert"
 	// "log"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -137,13 +138,23 @@ func TestConfWrite(t *testing.T) {
 			},
 			out: "domain.com 127.0.0.1 80 true a b c ",
 			err: nil,
+		}, {
+			in: siteParams{
+				IntHost:      "lol.com",
+				IntIP:        "10.10.10.10",
+				IntPort:      443,
+				Encrypted:    true,
+				StripHeaders: []string{"apple", "banana", "carrot"},
+			},
+			out: "lol.com 10.10.10.10 443 true apple banana carrot ",
+			err: nil,
 		},
 	}
 
 	templPath := os.TempDir()
 	templExt := ".out"
-	baseURL := "domain.com"
-	subdomainLen := 6
+	baseURL := "proxy.com"
+	subdomainLen := 1
 	excludes := []string{"a.domain.com", "b.domain.com", "c.domain.com"}
 	templateString := `{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}} {{ range .StripHeaders }}{{.}} {{end}}`
 	templ := template.Must(template.New("testing").Parse(templateString))
@@ -163,4 +174,36 @@ func TestConfWrite(t *testing.T) {
 		assert.Equal(t, test.out, string(contents), "file contents did not match expected")
 		assert.Equal(t, test.err, err, "errors did not match up")
 	}
+}
+
+func TestConfWrite_badLocation(t *testing.T) {
+	var test = struct {
+		in  siteParams
+		out string
+		err error
+	}{
+		in: siteParams{
+			IntHost:      "domain.com",
+			IntIP:        "127.0.0.1",
+			IntPort:      80,
+			Encrypted:    true,
+			StripHeaders: []string{"a", "b", "c"},
+		},
+	}
+
+	templPath := "/bad/directory"
+	templExt := ".out"
+	baseURL := "proxy.com"
+	subdomainLen := 1
+	excludes := []string{"a.domain.com", "b.domain.com", "c.domain.com"}
+	templateString := `{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}} {{ range .StripHeaders }}{{.}} {{end}}`
+	templ := template.Must(template.New("testing").Parse(templateString))
+
+	w := confWrite(templPath, templExt, baseURL, subdomainLen, *templ, excludes)
+
+	outConf, err := w(test.in)
+	badFile := templPath + PathSep + outConf.ExtHost + templExt
+	test.err = fmt.Errorf("unknown error with file [%s] - open %s: no such file or directory", badFile, badFile)
+
+	assert.Equal(t, test.err.Error(), err.Error(), "errors did not match up")
 }
