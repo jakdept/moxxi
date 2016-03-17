@@ -1,9 +1,8 @@
 package moxxiConf
 
 import (
-	"github.com/stretchr/testify/assert"
-	// "log"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"testing"
