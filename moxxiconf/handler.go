@@ -3,7 +3,7 @@ package moxxiConf
 import (
 	"encoding/json"
 	"net/http"
-	"log"
+	// "log"
 	"strconv"
 	"text/template"
 )
@@ -15,7 +15,7 @@ func FormHandler(baseURL, confPath, confExt string, excludes []string,
 	confWriter := confWrite(confPath, confExt, baseURL, subdomainLen, confTempl, excludes)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		
+
 		err := r.ParseForm()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -23,8 +23,6 @@ func FormHandler(baseURL, confPath, confExt string, excludes []string,
 		}
 
 		var tls bool
-
-		log.Println(r.PostForm)
 
 		if r.Form.Get("host") == "" {
 			http.Error(w, "no provided hostname", http.StatusPreconditionFailed)
