@@ -20,7 +20,7 @@ func main() {
 	resTemplString := flag.String("resTempl", "template.response", "base template for the response")
 	baseDomain := flag.String("domain", "", "base domain to add onto")
 	subdomainLength := flag.Int("subLength", 8, "length of subdomain to exclude")
-	confLoc := flag.String("confLoc", "", "path to put the domains")
+	confLoc := flag.String("confLoc", ".", "path to put the domains")
 	confExt := flag.String("confExt", ".conf", "extension to add to the confs")
 
 	flag.Var(&excludedDomains, "excludedDomain", "domain names to exclude")
@@ -43,11 +43,11 @@ func main() {
 	mux := http.NewServeMux()
 
 	for _, each := range jsonHandler {
-		mux.HandleFunc(each, moxxiConf.JSONHandler(*baseDomain, *confLoc, *confExt, *excludedDomains, *confTempl, *resTempl, *subdomainLength))
+		mux.HandleFunc(each, moxxiConf.JSONHandler(*baseDomain, *confLoc, *confExt, excludedDomains, *confTempl, *resTempl, *subdomainLength))
 	}
 
 	for _, each := range formHandler {
-		mux.HandleFunc(each, moxxiConf.FormHandler(*baseDomain, *confLoc, *confExt, *excludedDomains, *confTempl, *resTempl, *subdomainLength))
+		mux.HandleFunc(each, moxxiConf.FormHandler(*baseDomain, *confLoc, *confExt, excludedDomains, *confTempl, *resTempl, *subdomainLength))
 	}
 
 	if len(fileHandler) != len(fileDocroot) {

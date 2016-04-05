@@ -2,8 +2,8 @@ package moxxiConf
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
+	// "log"
 	"strconv"
 	"text/template"
 )
@@ -15,31 +15,33 @@ func FormHandler(baseURL, confPath, confExt string, excludes []string,
 	confWriter := confWrite(confPath, confExt, baseURL, subdomainLen, confTempl, excludes)
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		err := r.ParseForm()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			r.Form = r.URL.Query()
+			return
 		}
+
 		var tls bool
 
-		if len(r.Form["host"]) < 1 {
+		if r.Form.Get("host") == "" {
 			http.Error(w, "no provided hostname", http.StatusPreconditionFailed)
 			// TODO some log line?
 			return
 		}
 
-		if len(r.Form["ip"]) < 1 {
+		if r.Form.Get("ip") == "" {
 			http.Error(w, "no provided ip", http.StatusPreconditionFailed)
 			// TODO some log line?
 			return
 		}
 
-		if tls, err = strconv.ParseBool(r.Form["tls"][0]); err != nil {
+		if tls, err = strconv.ParseBool(r.Form.Get("tls")); err != nil {
 			tls = DefaultBackendTLS
 		}
 
-		port, _ := strconv.Atoi(r.Form["port"][0])
-		config, err := confCheck(r.Form["host"][0], r.Form["ip"][0], tls, port,
+		port, _ := strconv.Atoi(r.Form.Get("port"))
+		config, err := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
 			r.Form["header"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
@@ -78,12 +80,8 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 			blockedHeaders []string
 		}
 
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-
-		err = json.Unmarshal(body, &v)
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&v)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -106,6 +104,7 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 
 			responseConfig = append(responseConfig, config)
 		}
+
 		if err = resTempl.Execute(w, responseConfig); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			// TODO some long line? or no?
