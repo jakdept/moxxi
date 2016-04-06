@@ -40,17 +40,38 @@ GOARCH=amd64 GOOS=linux go install github.com/JackKnifed/moxxi
 
 Finally, copy that binary to `/usr/local/bin` on the target system. It should currently be at `$GOPATH/bin/moxxi`.
 
-Nginx Configs
--------------
+Server Setup
+------------
 
-You will need to create a few folders to configure Nginx:
+This section predicates that you have already installed `nginx`, `iptables`, `cron`, `systemd`, `moxxi`, and `syncthing`.
+
+```bash
+useradd -m moxxi
+usermod -aG www-data
+```
+
+You will need to create a few folders to configure `nginx`:
 
 ```bash
 mkdir -p /etc/nginx/proxy.d
+chown moxxi:www-data /etc/nginx/proxy.d
 ```
+
+`mv` `moxxi.parentdomain.com.conf` into `/etc/nginx/conf.d`.
+
+Replace `/etc/nginx/nginx.conf` with the version in the repository.
 
 Copy all configs from the nginx folder of the repository to `/etc/nginx/conf.d`. Adjust the domain name in there as needed.
 
 Cron task Configuration
 -----------------------
+
+To configure the scheduled tasks for this, run:
+
+```bash
+cat <<EOM >/etc/cron.d/moxxi.cron
+*/15 * * * * root /bin/systemctl reload nginx
+0 1 * * * moxxi /usr/bin/find /etc/nginx/proxy.d -type f -mtime +31 -delete
+EOM
+```
 
