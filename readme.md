@@ -12,8 +12,6 @@ To set this up, you need a few things:
 * `systemd` or write your own init scripts
 * An LDAP server?
 
-Better Instructions on setting up nginx
----------------------------------------
 
 Building the moxxi server yourself
 ----------------------------------
@@ -39,6 +37,49 @@ GOARCH=amd64 GOOS=linux go install github.com/JackKnifed/moxxi
 ```
 
 Finally, copy that binary to `/usr/local/bin` on the target system. It should currently be at `$GOPATH/bin/moxxi`.
+
+Install nginx
+-------------
+
+Grab your release name with:
+
+```bash
+hostnamectl
+```
+
+Add the following lines to `/etc/apt/sources.list` (replace codename in these lines)
+
+```text
+deb http://nginx.org/packages/ubuntu/ codename nginx
+deb-src http://nginx.org/packages/ubuntu/ codename nginx
+```
+
+Install:
+
+```bash
+apt-get update
+apt-get install -y dpkg-dev
+mkdir -p /opt/rebuildnginx
+apt-get source -y nginx
+apt-get build-dep -y nginx
+```
+
+Edit `/opt/rebuildnginx/version/debian/rules` adding the configure flags you need.
+
+* `--with-http_sub_module`
+* `--with-http_auth_request_module`
+
+```bash
+cd /opt/rebuildnginx/$version
+```
+
+```bash
+dpkg-buildpackage -b
+```
+
+```bash
+dpkg --install packagename
+```
 
 Server Setup
 ------------
