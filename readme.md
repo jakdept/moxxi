@@ -61,10 +61,7 @@ chown moxxi:www-data /etc/nginx/proxy.d
 
 Replace `/etc/nginx/nginx.conf` with the version in the repository.
 
-Copy all configs from the nginx folder of the repository to `/etc/nginx/conf.d`. Adjust the domain name in there as needed.
-
-Cron task Configuration
------------------------
+Copy `moxxi.parentdomain.com.conf` into `/etc/nginx/sites.d` - modify the file to match your domain name and rename.
 
 To configure the scheduled tasks for this, run:
 
@@ -75,3 +72,8 @@ cat <<EOM >/etc/cron.d/moxxi.cron
 EOM
 ```
 
+Copy the unit files into place for the services, and then start/load them.
+
+```bash
+systemctl enable /path/to/config/file
+```
