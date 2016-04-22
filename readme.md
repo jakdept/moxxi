@@ -84,25 +84,42 @@ dpkg --install packagename
 Server Setup
 ------------
 
+
 This section predicates that you have already installed `nginx`, `iptables`, `cron`, `systemd`, `moxxi`, and `syncthing`.
+
+To install these things on Debian 8:
+
+```bash
+apt-get install nginx iptables
+```
+
+Build/download the syncthing and moxxi then:
 
 ```bash
 useradd -m moxxi
-usermod -aG www-data
+usermod -aG www-data moxxi
+mkdir -p /home/moxxi/bin /home/moxxi/vhosts.d
+chgrp www-data /home/moxxi/vhosts.d
 ```
 
-You will need to create a few folders to configure `nginx`:
-
-```bash
-mkdir -p /etc/nginx/proxy.d
-chown moxxi:www-data /etc/nginx/proxy.d
+```
+scp moxxi moxxi1:/home/moxxi/bin/moxxi
 ```
 
-`mv` `moxxi.parentdomain.com.conf` into `/etc/nginx/conf.d`.
+Remove some boilerplate nginx stuff:
+
+```
+unlink /etc/nginx/sites-enabled/*
+rm -rf /etc/nginx/sites-enabled/ /etc/nginx/sites-available/
+mkdir -p /etc/nginx/sites.d
+```
 
 Replace `/etc/nginx/nginx.conf` with the version in the repository.
 
-Copy `moxxi.parentdomain.com.conf` into `/etc/nginx/sites.d` - modify the file to match your domain name and rename.
+Copy, rename, and edit the following files into /etc/nginx/conf.d/
+
+* `moxxi.parentdomain.com.conf`
+* `parentdomain.com.conf`
 
 To configure the scheduled tasks for this, run:
 
