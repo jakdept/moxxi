@@ -95,16 +95,20 @@ apt-get install nginx iptables
 
 Build/download the syncthing and moxxi then:
 
+### User setup ###
+
 ```bash
 useradd -m moxxi
 usermod -aG www-data moxxi
-mkdir -p /home/moxxi/bin /home/moxxi/vhosts.d
+su -c "mkdir -p /home/moxxi/bin /home/moxxi/vhosts.d /home/moxxi/files" moxxi
 chgrp www-data /home/moxxi/vhosts.d
 ```
 
 ```
 scp moxxi moxxi1:/home/moxxi/bin/moxxi
 ```
+
+### Nginx setup ###
 
 Remove some boilerplate nginx stuff:
 
@@ -120,6 +124,21 @@ Copy, rename, and edit the following files into /etc/nginx/conf.d/
 
 * `moxxi.parentdomain.com.conf`
 * `parentdomain.com.conf`
+* `ssl.conf`
+
+### Firewall setup ###
+
+```bash
+cat <<EOM >/etc/network/if-pre-up.d/iptables
+#!/bin/sh
+/sbin/iptables-restore < /etc/iptables
+EOM
+chmod 751 /etc/network/if-pre-up.d/iptables
+```
+
+Copy `iptables` to `/etc/iptables`.
+
+### Cron setup ###
 
 To configure the scheduled tasks for this, run:
 
@@ -130,8 +149,17 @@ cat <<EOM >/etc/cron.d/moxxi.cron
 EOM
 ```
 
+
+### moxxi setup ###
+
+Copy the following files to `/home/moxxi`
+
+* `proxy.template`
+* `response.template`
+* `moxxi.service`
+
 Copy the unit files into place for the services, and then start/load them.
 
 ```bash
-systemctl enable /path/to/config/file
+systemctl enable /home/moxxi/moxxi.service
 ```

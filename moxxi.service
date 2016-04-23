@@ -1,0 +1,25 @@
+[Unit]
+Description=moxxi
+After=rsyslog.service
+Requires=rsyslog.service
+After=network.target
+Requires=network.target
+
+[Service]
+User=moxxi
+ExecStart=/home/moxxi/bin/moxxi\
+-subLength 8\
+-domain parentdomain.com\
+-resTempl $HOME/response.template\
+-confTempl $HOME/config.template\
+-confLoc $HOME/vhosts.d\
+-excludedDomain moxxi.parentdomain.com\
+-fileHandler /static/\
+-fileDocroot $HOME/files/\
+-formHandler /submit/\
+-jsonHandler /json/
+
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
