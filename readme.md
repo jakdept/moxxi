@@ -38,49 +38,6 @@ GOARCH=amd64 GOOS=linux go install github.com/JackKnifed/moxxi
 
 Finally, copy that binary to `/usr/local/bin` on the target system. It should currently be at `$GOPATH/bin/moxxi`.
 
-Install nginx
--------------
-
-Grab your release name with:
-
-```bash
-hostnamectl
-```
-
-Add the following lines to `/etc/apt/sources.list` (replace codename in these lines)
-
-```text
-deb http://nginx.org/packages/ubuntu/ codename nginx
-deb-src http://nginx.org/packages/ubuntu/ codename nginx
-```
-
-Install:
-
-```bash
-apt-get update
-apt-get install -y dpkg-dev
-mkdir -p /opt/rebuildnginx
-apt-get source -y nginx
-apt-get build-dep -y nginx
-```
-
-Edit `/opt/rebuildnginx/version/debian/rules` adding the configure flags you need.
-
-* `--with-http_sub_module`
-* `--with-http_auth_request_module`
-
-```bash
-cd /opt/rebuildnginx/$version
-```
-
-```bash
-dpkg-buildpackage -b
-```
-
-```bash
-dpkg --install packagename
-```
-
 Server Setup
 ------------
 
@@ -133,7 +90,7 @@ cat <<EOM >/etc/network/if-pre-up.d/iptables
 #!/bin/sh
 /sbin/iptables-restore < /etc/iptables
 EOM
-chmod 751 /etc/network/if-pre-up.d/iptables
+#chmod +x /etc/network/if-pre-up.d/iptables
 ```
 
 Copy `iptables` to `/etc/iptables`.
@@ -161,5 +118,17 @@ Copy the following files to `/home/moxxi`
 Copy the unit files into place for the services, and then start/load them.
 
 ```bash
-systemctl enable /home/moxxi/moxxi.service
+systemctl enable moxxi.service syncthing@moxxi.service
+systemctl start moxxi.service syncthing@moxxi.service
 ```
+
+### syncthing setup ###
+
+The `syncthing` binary should already be running, if it's not, copy it onto the server and get it running.
+
+Use `netstat -tpln` to find the port `syncthing` is running on - likely `8384`.
+
+Use a line like the following to administer it:
+
+```bash
+ssh -L 
