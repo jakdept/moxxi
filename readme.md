@@ -109,26 +109,35 @@ EOM
 
 ### moxxi setup ###
 
+Install the `moxxi` binary to `/usr/bin/moxxi`.
+
 Copy the following files to `/home/moxxi`
 
 * `proxy.template`
 * `response.template`
-* `moxxi.service`
 
-Copy the unit files into place for the services, and then start/load them.
+Copy the unit file to `/etc/systemd/system/moxxi.service`.
 
 ```bash
-systemctl enable moxxi.service syncthing@moxxi.service
-systemctl start moxxi.service syncthing@moxxi.service
+systemctl enable moxxi.service
+systemctl start moxxi.service
 ```
 
 ### syncthing setup ###
 
-The `syncthing` binary should already be running, if it's not, copy it onto the server and get it running.
+Copy the `syncthing` binary to `/usr/bin/syncthing`.
+
+Copy the unit file to `/etc/systemd/system/syncthing@.service`.
+
+```bash
+systemctl enable syncthing@moxxi.service
+systemctl start syncthing@moxxi.service
+```
 
 Use `netstat -tpln` to find the port `syncthing` is running on - likely `8384`.
 
-Use a line like the following to administer it:
+From your wks, run the following to connect then visit [localhost:8081](localhost:8081):
 
 ```bash
-ssh -L 
+ssh -L 8081:127.0.0.1:8384 moxxi1
+```
