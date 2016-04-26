@@ -6,7 +6,8 @@
 		<script>
 			function doAddHeaderBox(newVal) {
 				var element = document.createElement("input");
-				element.setAttribute("type", "button");
+				element.setAttribute("type", "text");
+				element.setAttribute("readonly", "true");
 				element.setAttribute("value", newVal);
 				element.setAttribute("name", "header[]");
 				element.onclick = function(e){this.parentNode.removeChild(this)};
