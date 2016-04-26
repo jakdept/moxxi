@@ -4,15 +4,26 @@
 		<title>
 		</title>
 		<script>
-			function addHeaderBox() {
+			function doAddHeaderBox(newVal) {
 				var element = document.createElement("input");
+				element.setAttribute("type", "button");
+				element.setAttribute("value", newVal);
+				element.setAttribute("name", "header[]");
+				element.onclick = function(e){this.parentNode.removeChild(this)};
 
-				var parent = document.getElementByID("headerLoc");
+				var parent = document.getElementById("headerLoc");
 				parent.appendChild(element);
+			}
+			function addHeaderBox() {
+				doAddHeaderBox(document.getElementById("currentHeader").value);
+			}
+			function startup() {
+				doAddHeaderBox("Public-Key-Pins");
+				doAddHeaderBox("Strict-Transport-Security");
 			}
 		</script>
 	</head>
-	<body>
+	<body onload="startup();">
 		<form action="POST" method="post">
 			<table>
 				<tr>
@@ -20,16 +31,23 @@
 						<label>Backend Host:</label>
 						<input type="text" name="host">
 					</td>
+				</tr>
+				<tr>
 					<td>
 						<label>Backend IP:</label>
 						<input type="text" name="ip">
 					</td>
+				</tr>
+				<tr>
+					<td>
+						<label>Header:</label>
+						<input type="text" id="currentHeader">
+					</td>
+				</tr>
+				<tr>
 					<td>
 						<label>Encryption:</label>
 						<input type="checkbox" name="tls">
-					</td>
-					<td>
-						<label>Header:</label>
 						<button type="button" onclick="addHeaderBox()">Add Header</button>
 					</td>
 				</tr>
@@ -37,9 +55,10 @@
 					<td>
 						<input type="submit" value="do it">
 					</td>
-					<td colspan="3">
+				</tr>
+				<tr>
+					<td>
 						<div id="headerLoc">
-							<input type="text" name="header[]">
 						</div>
 					</td>
 				</tr>
