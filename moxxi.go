@@ -5,6 +5,7 @@ import (
 	"github.com/JackKnifed/moxxi/moxxiconf"
 	"log"
 	"net/http"
+	"io/ioutil"
 	"text/template"
 )
 
@@ -14,6 +15,8 @@ func main() {
 	var fileHandler moxxiConf.HandlerLocFlag
 	var fileDocroot moxxiConf.HandlerLocFlag
 	var excludedDomains moxxiConf.HandlerLocFlag
+	var staticHandler moxxiConf.HandlerLocFlag
+	var staticResponse moxxiConf.HandlerLocFlag
 
 	listen := flag.String("listen", ":8080", "listen address to use")
 	confTemplString := flag.String("confTempl", "template.conf", "base templates for the configs")
@@ -28,6 +31,8 @@ func main() {
 	flag.Var(&formHandler, "formHandler", "locations for a form handler (multiple)")
 	flag.Var(&fileHandler, "fileHandler", "locations for a file handler (multiple)")
 	flag.Var(&fileDocroot, "fileDocroot", "docroots for each file handler (multiple)")
+	flag.Var(&staticHandler, "staticHandler", "location for a static response (multiple)")
+	flag.Var(&staticResponse, "staticResponse", "file containing the static response to return (multiple)")
 
 	flag.Parse()
 
@@ -41,6 +46,14 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+
+	for i, _ := range staticResponse {
+		newResponse, err := ioutil.ReadFile(staticResponse[i])
+		if err != nil {
+			log.Fatal(err)
+		}
+		mux.HandleFunc(staticHandler[i], moxxiConf.StaticHandler(newResponse))
+	}
 
 	for _, each := range jsonHandler {
 		mux.HandleFunc(each, moxxiConf.JSONHandler(*baseDomain, *confLoc, *confExt, excludedDomains, *confTempl, *resTempl, *subdomainLength))
