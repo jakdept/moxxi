@@ -13,8 +13,8 @@ ExecStart=/usr/local/bin/moxxi --subLength=8 \
 	--resTempl=${HOME}/response.template \
 	--confLoc=${HOME}/vhosts.d \
 	--excludedDomain=moxxi.parentdomain.com \
-	--fileHandler=/static/ \
-	--fileDocroot=${HOME}/files/ \
+	--staticHandler=/ \
+	--statifResponse=${HOME}/simple_form.html \
 	--formHandler=/submit/ \
 	--jsonHandler=/json/
 
