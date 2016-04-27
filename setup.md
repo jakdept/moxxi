@@ -57,7 +57,7 @@ Build/download the syncthing and moxxi then:
 ```bash
 useradd -m moxxi
 usermod -aG www-data moxxi
-su -c "mkdir -p /home/moxxi/bin /home/moxxi/vhosts.d /home/moxxi/files" moxxi
+su -c "mkdir -p /home/moxxi/bin /home/moxxi/vhosts.d /home/moxxi" moxxi
 chgrp www-data /home/moxxi/vhosts.d
 ```
 

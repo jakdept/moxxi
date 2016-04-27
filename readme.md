@@ -26,3 +26,42 @@ This system consists of a few things:
 `nginx` then also includes all the confs in a given folder, and is set to reload (reparse all configs) every 5 minutes.
 
 `iptables` with incoming filtering is used to filter incoming traffic - only the SSH port, 80, and 443 are open. No filtering is done outgoing as this can hit any remote port on a remote server.
+
+Layout
+------
+
+See below for a (very crude) visual diagram of how this works.
+
+```
+
+                                                ----------------
+                                               | Load  Balancer |
+          /----------------------------------  |  Port 80/443   | -------------------------------\
+          |                            |       |  *.domain.com  |     |                          |    
+          |                            |        ----------------      |                          |      
+          |                            |                              |                          |            
+          v                            v                              v                          v            
+                                                                                                              
+ ----------------------       ----------------------      ----------------------       ----------------------     
+|       moxxi1         |     |       moxxi2         |    |       moxxi3         |     |       moxxi4         |      
+|                      |     |                      |    |                      |     |                      |      
+| cleanup runs at 1am  |     | cleanup runs at 2am  |    | cleanup runs at 3am  |     | cleanup runs at 4am  |
+|                      |     |                      |    |                      |     |                      |
+|   syncthing syncs    |     |   syncthing syncs    |    |   syncthing syncs    |     |   syncthing syncs    |      
+| /home/moxxi/vhosts.d |     | /home/moxxi/vhosts.d |    | /home/moxxi/vhosts.d |     | /home/moxxi/vhosts.d |      
+ ----------------------       ----------------------      ----------------------       ----------------------        
+        \     /                      \     /                      \     /                      \     /              
+        |     |                      |     |                      |     |                      |     |              
+        |     |                      |     |                      |     |                      |     |              
+        |     \______________________/     \______________________/     \______________________/     |              
+        |                                                                                            |
+        |                                        syncthing                                           |
+        \____________________________________________________________________________________________/
+
+
+```
+
+Each server is set up as:
+
+```
+

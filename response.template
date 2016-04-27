@@ -9,7 +9,7 @@
 			{{ range . }}
 			<tr>
 				<td>
-					<a href="{{ .ExtHost }}">{{ .ExtHost }}</a>
+					<a href="http://{{ .ExtHost }}">{{ .ExtHost }}</a>
 				</td>
 				<td>
 					{{ .IntHost }}

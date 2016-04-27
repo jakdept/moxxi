@@ -2,48 +2,15 @@
 	listen 80;
 	listen [::]:80;
 
-	server_name {{ .ExtHost }};
-
-	location / {
-		proxy_buffers 16 4k;
-		proxy_buffer_size 2k;
-
-		proxy_set_header X-Real-IP $remote_addr;
-		proxy_set_header X-Real-Host $host;
-		{{ range .StripHeaders }}
-		proxy_set_header {{ . }} "";
-		{{ end }}
-
-		# external IP address to forward to
-		proxy_bind {{ .IntIP }};
-		{{ if .Encrypted }}
-		proxy_pass https://{{ .IntHost }}:{{ .IntPort }};
-		{{ else }}
-		proxy_pass http://{{ .IntHost }}:{{ .IntPort }};
-		{{ end }}
-
-		# response modification
-		sub_filter {{ .IntHost }} $host;
-		sub_filter_last_modified on;
-		sub_filter_once off;
-		// only filter html responses
-		sub_filter_types text/html;
-	}
-}
-
- server {
 	listen 443;
 	listen [::]:443;
+	include ssl.conf;
 
 	server_name {{ .ExtHost }};
 
 	location / {
 		proxy_buffers 16 4k;
 		proxy_buffer_size 2k;
-
-		ssl    on;
-		ssl_certificate    /etc/ssl/wildcard.pem;
-		ssl_certificate_key    /etc/ssl/wildcard.key;
 
 		proxy_set_header X-Real-IP $remote_addr;
 		proxy_set_header X-Real-Host $host;
@@ -52,18 +19,18 @@
 		{{ end }}
 
 		# external IP address to forward to
-		proxy_bind {{ .IntIP }};
 		{{ if .Encrypted }}
-		proxy_pass https://{{ .IntHost }}:{{ .IntPort }};
+		proxy_pass https://{{ .IntIP }}:{{ .IntPort }};
 		{{ else }}
-		proxy_pass http://{{ .IntHost }}:{{ .IntPort }};
+		proxy_pass http://{{ .IntIP }}:{{ .IntPort }};
 		{{ end }}
+
+		proxy_set_header Host {{ .IntHost }};
 
 		# response modification
 		sub_filter {{ .IntHost }} $host;
 		sub_filter_last_modified on;
 		sub_filter_once off;
-		// only filter html responses
-		sub_filter_types text/html;
+		# only filter html responses
 	}
 }

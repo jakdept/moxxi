@@ -7,14 +7,14 @@ Requires=network.target
 
 [Service]
 User=moxxi
-ExecStart=/usr/local/bin/moxxi --subLength=8 \
+ExecStart=/usr/bin/moxxi --subLength=8 \
 	--domain=parentdomain.com \
 	--confTempl=${HOME}/config.template \
 	--resTempl=${HOME}/response.template \
 	--confLoc=${HOME}/vhosts.d \
 	--excludedDomain=moxxi.parentdomain.com \
 	--staticHandler=/ \
-	--statifResponse=${HOME}/simple_form.html \
+	--staticResponse=${HOME}/simple_form.html \
 	--formHandler=/submit/ \
 	--jsonHandler=/json/
 
