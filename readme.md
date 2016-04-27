@@ -39,8 +39,8 @@ See below for a (very crude) visual diagram of how this works.
           /-----------------  |  Port 80/443   | ---------------------\
           |                   |  *.domain.com  |                      |    
           |                    ----------------                       |      
-          |                            |                              |                          |            
-          v                            v                              v                          v            
+          |                            |                              |
+          v                            v                              v
                                                                                                               
  ----------------------       ----------------------      ---------------------- 
 |       moxxi1         |     |       moxxi2         |    |       moxxi3         |
@@ -55,7 +55,7 @@ See below for a (very crude) visual diagram of how this works.
         |     |                      |     |                      |     |
         |     \______________________/     \______________________/     |
         |                                                               |
-        |                                        syncthing              |
+        |                     syncthing                                 |
         \_______________________________________________________________/
 
 
