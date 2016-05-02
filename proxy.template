@@ -18,14 +18,15 @@
 		proxy_set_header {{ . }} "";
 		{{ end }}
 
+
 		# external IP address to forward to
 		{{ if .Encrypted }}
 		proxy_pass https://{{ .IntIP }}:{{ .IntPort }};
 		{{ else }}
 		proxy_pass http://{{ .IntIP }}:{{ .IntPort }};
 		{{ end }}
-
 		proxy_set_header Host {{ .IntHost }};
+		proxy_redirect {{ .IntHost }} $host;
 
 		# response modification
 		sub_filter {{ .IntHost }} $host;
