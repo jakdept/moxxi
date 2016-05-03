@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"github.com/JackKnifed/moxxi/moxxiconf"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"io/ioutil"
 	"text/template"
 )
 
