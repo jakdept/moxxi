@@ -96,3 +96,42 @@ Each server is set up as:
   
 ``` 
 
+JSON Format
+-----------
+
+JSON requests should be laid out as follows:
+
+```json
+[
+  {
+    "host": "hostname",
+    "ip": "serverIP",
+    "port": 443,
+    "tls": true,
+    "blockedHeaders": [
+      "X-Frame-Options",
+      "Accept-Encoding"
+    ]
+  },
+  {
+    "host": "liquidweb.com",
+    "ip": "67.43.15.214",
+    "port": 443,
+    "tls": true,
+    "blockedHeaders": [
+      "X-Frame-Options",
+      "Accept-Encoding"
+    ]
+  },
+  {
+    "host": "deleteos.com",
+    "ip": "deleteos.com",
+    "port": 443,
+    "tls": true,
+    "blockedHeaders": [
+      "X-Frame-Options",
+      "Accept-Encoding"
+    ]
+  }
+]
+```
