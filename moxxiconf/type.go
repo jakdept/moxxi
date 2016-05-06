@@ -97,3 +97,19 @@ func (f *HandlerLocFlag) Set(value string) error {
 func (f HandlerLocFlag) GetOne(i int) string {
 	return f[i]
 }
+
+func parseCheckbox(in string) bool {
+	checkedValues := []string{
+		"true",
+		"checked",
+		"on",
+		"1",
+	}
+
+	for _, each := range checkedValues {
+		if each == in {
+			return true
+		}
+	}
+	return false;
+}

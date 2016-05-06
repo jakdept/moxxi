@@ -36,7 +36,7 @@ func FormHandler(baseURL, confPath, confExt string, excludes []string,
 			return
 		}
 
-		if tls, err = strconv.ParseBool(r.Form.Get("tls")); err != nil {
+		if tls = parseCheckbox(r.Form.Get("tls")); err != nil {
 			tls = DefaultBackendTLS
 		}
 
