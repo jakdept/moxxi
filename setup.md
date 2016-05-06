@@ -97,20 +97,18 @@ cat <<EOM >/etc/network/if-pre-up.d/iptables
 #!/bin/sh
 /sbin/iptables-restore < /etc/iptables
 EOM
-#chmod +x /etc/network/if-pre-up.d/iptables
+chmod +x /etc/network/if-pre-up.d/iptables
 ```
 
 Copy `iptables` to `/etc/iptables`.
 
 ### Cron setup ###
 
-To configure the scheduled tasks for this, run:
+To configure the scheduled tasks for this, add the following to cron:
 
 ```bash
-cat <<EOM >/etc/cron.d/moxxi.cron
 */5 * * * * root /bin/systemctl reload nginx
 0 1 * * * moxxi /usr/bin/find /etc/nginx/proxy.d -type f -mtime +31 -delete
-EOM
 ```
 
 
