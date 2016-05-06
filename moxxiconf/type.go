@@ -103,6 +103,8 @@ func parseCheckbox(in string) bool {
 		"true",
 		"checked",
 		"on",
+		"yes",
+		"y",
 		"1",
 	}
 
