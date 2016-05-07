@@ -25,13 +25,15 @@ server {
 		{{ end -}}
 
 		# external IP address to forward to
+		proxy_set_header Host {{ .IntHost }};
 		{{ if .Encrypted }}
 		proxy_pass https://{{ .IntIP }}:{{ .IntPort }};
+		proxy_redirect https://{{ .IntHost }}/ https://$host/;
+		proxy_redirect https://{{ .IntHost }}:{{ .IntPort }}/ https://$host/;
 		{{ else }}
 		proxy_pass http://{{ .IntIP }}:{{ .IntPort }};
-		{{ end }}
-		proxy_set_header Host {{ .IntHost }};
-		proxy_redirect {{ .IntHost }} $host;
-
+		proxy_redirect http://{{ .IntHost }}/ http://$host/;
+		proxy_redirect http://{{ .IntHost }}:{{ .IntPort }}/ http://$host/;
+		{{ end -}}
 	}
 }
