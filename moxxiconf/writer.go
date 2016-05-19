@@ -24,9 +24,12 @@ func validHost(s string) string {
 		return ""
 	}
 	for i := 0; i < len(parts)-1; {
-		if len(parts[i]) < 1 {
+		switch {
+		case len(parts[i]) < 1:
 			parts = append(parts[:i], parts[i+1:]...)
-		} else {
+		case isNotAlphaNum.MatchString(parts[i]):
+			return "";
+		default:
 			i++
 		}
 	}
@@ -102,4 +105,22 @@ func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.T
 
 		return config, nil
 	}
+}
+
+func parseCheckbox(in string) bool {
+	checkedValues := []string{
+		"true",
+		"checked",
+		"on",
+		"yes",
+		"y",
+		"1",
+	}
+
+	for _, each := range checkedValues {
+		if each == in {
+			return true
+		}
+	}
+	return false;
 }

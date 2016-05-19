@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"regexp"
 )
 
 // PathSep is the path seperator used throughout this program
@@ -98,20 +99,8 @@ func (f HandlerLocFlag) GetOne(i int) string {
 	return f[i]
 }
 
-func parseCheckbox(in string) bool {
-	checkedValues := []string{
-		"true",
-		"checked",
-		"on",
-		"yes",
-		"y",
-		"1",
-	}
+var isNotAlphaNum *regexp.Regexp
 
-	for _, each := range checkedValues {
-		if each == in {
-			return true
-		}
-	}
-	return false;
+func init() {
+	isNotAlphaNum = regexp.MustCompile("[^a-zA-Z0-9]")
 }

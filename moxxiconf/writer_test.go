@@ -64,10 +64,16 @@ func TestValidHost(t *testing.T) {
 		}, {
 			"...sub.domain.com...",
 			"sub.domain.com",
+		}, {
+			"sub.do_main.com",
+			"",
+		}, {
+			"sub.do;main.com",
+			"",
 		},
 	}
-	for _, test := range testData {
-		assert.Equal(t, test.out, validHost(test.in), "output should match")
+	for id, test := range testData {
+		assert.Equal(t, test.out, validHost(test.in), "output should match - test # %d", id)
 	}
 }
 
