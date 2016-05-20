@@ -27,10 +27,10 @@ JSON requests should be laid out as follows - just included here:
     ]
   },
   {
-    "host": "liquidweb.com",
-    "ip": "67.43.15.214",
-    "port": 443,
-    "tls": true,
+    "host": "hostbaitor.com",
+    "ip": "72.52.161.205",
+    "port": 80,
+    "tls": false,
     "blockedHeaders": [
       "X-Frame-Options",
       "Accept-Encoding"
