@@ -65,13 +65,13 @@ func FormHandler(baseURL, confPath, confExt string, excludes []string,
 }
 
 // JSONHandler - creates and returns a Handler for JSON body requests
-func JSONHandler(baseURL, confPath, confExt string, excludes []string,
-	confTempl, resTempl template.Template, subdomainLen int) http.HandlerFunc {
+func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
-	confWriter := confWrite(confPath, confExt, baseURL, subdomainLen, confTempl, excludes)
+	confWriter := confWrite(config)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
+// TODO move this stuff so it's declared once
 		var v []struct {
 			host           string
 			ip             string
@@ -81,6 +81,7 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 		}
 
 		decoder := json.NewDecoder(r.Body)
+		// TODO this probably introduces a bug where only one json array is decoded
 		err := decoder.Decode(&v)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -89,20 +90,20 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 		var responseConfig []siteParams
 
 		for _, each := range v {
-			config, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders)
+			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)
 				// TODO some log line?
 				return
 			}
 
-			if config, err = confWriter(config); err != nil {
+			if confConfig, err = confWriter(confConfig); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				// TODO some log line? or no?
 				return
 			}
 
-			responseConfig = append(responseConfig, config)
+			responseConfig = append(responseConfig, confConfig)
 		}
 
 		if err = resTempl.Execute(w, responseConfig); err != nil {
