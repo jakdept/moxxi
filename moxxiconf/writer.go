@@ -71,10 +71,13 @@ func confWrite(config HandlerConfig) func(siteParams) (siteParams, error) {
 		var randPart, fileName string
 		var f *os.File
 
-		for randPart == "" || os.IsExist(err) {
+		for os.IsExist(err) {
 			randPart = uniuri.NewLenChars(config.subdomainLen, SubdomainChars)
-			// pick again
+			// pick again if you got something reserved
 			if inArr(config.excludes, randPart) {
+				continue
+			}
+			if inArr(config.excludes, randPart+DomainSep+config.baseURL) {
 				continue
 			}
 			fileName = strings.Join([]string{
