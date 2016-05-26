@@ -62,6 +62,8 @@ const (
 	ErrBadHost
 	ErrBadIP
 	ErrNoRandom
+	ErrNoHostname
+	ErrNoIP
 )
 
 // specify the error message for each error
@@ -73,6 +75,8 @@ var errMsg = map[int]string{
 	ErrBadHost:      "bad hostname provided [%s]",
 	ErrBadIP:        "bad IP provided [%s]",
 	ErrNoRandom:     "was not given a new random domain - shutting down",
+	ErrNoHostname: "no provided hostname"
+	ErrNoIP: "no provided IP"
 }
 
 // HandlerLocFlag gives a built in way to specify multiple locations to put the same handler

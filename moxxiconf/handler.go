@@ -23,13 +23,15 @@ func FormHandler(config) http.HandlerFunc {
 		var tls bool
 
 		if r.Form.Get("host") == "" {
-			http.Error(w, "no provided hostname", http.StatusPreconditionFailed)
+			err = &Err{Code:ErrNoHostname}
+			http.Error(w, err, http.StatusPreconditionFailed)
 			// TODO some log line?
 			return
 		}
 
 		if r.Form.Get("ip") == "" {
-			http.Error(w, "no provided ip", http.StatusPreconditionFailed)
+			err = &Err{Code:ErrNoIP}
+			http.Error(w, err, http.StatusPreconditionFailed)
 			// TODO some log line?
 			return
 		}
