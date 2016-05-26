@@ -59,31 +59,36 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 	return conf, nil
 }
 
-func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.Template,
-	excludes []string) func(siteParams) (siteParams, error) {
+func confWrite(config HandlerConfig) func(siteParams) (siteParams, error) {
 
-	if subdomainLen < 1 {
-		subdomainLen = 1
+	if config.subdomainLen < 1 {
+		config.subdomainLen = 1
 	}
 
-	return func(config siteParams) (siteParams, error) {
+	return func(siteConfig siteParams) (siteParams, error) {
 
 		err := os.ErrExist
 		var randPart, fileName string
 		var f *os.File
 
 		for randPart == "" || os.IsExist(err) {
-			randPart = uniuri.NewLenChars(subdomainLen, SubdomainChars) + "." + baseURL
+			randPart = uniuri.NewLenChars(config.subdomainLen, SubdomainChars)
 			// pick again
-			if inArr(excludes, randPart) {
+			if inArr(config.excludes, randPart) {
 				continue
 			}
-			fileName = strings.TrimRight(confPath, PathSep) + PathSep
-			fileName += randPart + DomainSep + strings.TrimLeft(confExt, DomainSep)
+			fileName = strings.Join([]string{
+				strings.TrimRight(config.confPath, PathSep),
+				PathSep,
+				randPart,
+				DomainSep,
+				config.baseURL,
+				DomainSep,
+				strings.TrimLeft(config.confExt, DomainSep)}, "")
 			f, err = os.Create(fileName)
 		}
 
-		config.ExtHost = randPart
+		siteConfig.ExtHost = randPart
 
 		if err == os.ErrPermission {
 			return siteParams{ExtHost: randPart}, &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
@@ -91,7 +96,7 @@ func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.T
 			return siteParams{ExtHost: randPart}, &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
 		}
 
-		tErr := t.Execute(f, config)
+		tErr := config.confTempl.Execute(f, siteConfig)
 
 		if err = f.Close(); err != nil {
 			return siteParams{}, &Err{Code: ErrCloseFile, value: fileName, deepErr: err}
@@ -103,7 +108,7 @@ func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.T
 			}
 		}
 
-		return config, nil
+		return siteConfig, nil
 	}
 }
 
