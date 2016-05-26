@@ -23,16 +23,16 @@ func FormHandler(config) http.HandlerFunc {
 		var tls bool
 
 		if r.Form.Get("host") == "" {
-			err = &Err{Code:ErrNoHostname}
+			err = &Err{Code: ErrNoHostname}
 			http.Error(w, err, http.StatusPreconditionFailed)
-			// TODO some log line?
+			log.Println(err.LogError(r))
 			return
 		}
 
 		if r.Form.Get("ip") == "" {
-			err = &Err{Code:ErrNoIP}
+			err = &Err{Code: ErrNoIP}
 			http.Error(w, err, http.StatusPreconditionFailed)
-			// TODO some log line?
+			log.Println(err.LogError(r))
 			return
 		}
 
@@ -45,19 +45,19 @@ func FormHandler(config) http.HandlerFunc {
 			r.Form["header"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
-			// TODO some log line?
+			log.Println(err.LogError(r))
 			return
 		}
 
 		if siteConfig, err = confWriter(siteConfig); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			// TODO some log line? or no?
+			log.Println(err.LogError(r))
 			return
 		}
 
 		if err = resTempl.Execute(w, []siteParams{siteConfig}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			// TODO some long line? or no?
+			log.Println(err.LogError(r))
 			return
 		}
 		return
@@ -71,7 +71,7 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-// TODO move this stuff so it's declared once
+		// TODO move this stuff so it's declared once
 		var v []struct {
 			host           string
 			ip             string
@@ -93,13 +93,13 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)
-				// TODO some log line?
+				log.Println(err.LogError(r))
 				return
 			}
 
 			if confConfig, err = confWriter(confConfig); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
-				// TODO some log line? or no?
+				log.Println(err.LogError(r))
 				return
 			}
 
@@ -108,7 +108,7 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 		if err = resTempl.Execute(w, responseConfig); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			// TODO some long line? or no?
+			log.Println(err.LogError(r))
 			return
 		}
 		return

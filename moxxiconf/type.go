@@ -2,6 +2,7 @@ package moxxiConf
 
 import (
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 	"text/template"
@@ -53,6 +54,30 @@ func (e *Err) Error() string {
 	}
 }
 
+// the function `LogError` to print error log lines
+func (e *Err) LogError(r *http.Request) string {
+	ts := time.Now()
+	switch {
+	case e.deepErr == nil && e.value == "":
+		return fmt.Sprintf("%s %s",
+			ts.Format("02-Jan-2006:15:04:05-0700"),
+			errMsg[e.Code])
+	case e.deepErr == nil && e.value != "":
+		return fmt.Sprintf("%s %s %s "+errMsg[e.Code],
+			ts.Format("02-Jan-2006:15:04:05-0700"),
+			r.RemoteAddr,
+			r.RequestURI,
+			e.value)
+	default:
+		return fmt.Sprintf("%s %s %s "+errMsg[e.Code],
+			ts.Format("02-Jan-2006:15:04:05-0700"),
+			r.RemoteAddr,
+			r.RequestURI,
+			e.value,
+			e.deepErr)
+	}
+}
+
 // assign a unique id to each error
 const (
 	ErrCloseFile = 1 << iota
@@ -75,8 +100,8 @@ var errMsg = map[int]string{
 	ErrBadHost:      "bad hostname provided [%s]",
 	ErrBadIP:        "bad IP provided [%s]",
 	ErrNoRandom:     "was not given a new random domain - shutting down",
-	ErrNoHostname: "no provided hostname"
-	ErrNoIP: "no provided IP"
+	ErrNoHostname:   "no provided hostname",
+	ErrNoIP:         "no provided IP",
 }
 
 // HandlerLocFlag gives a built in way to specify multiple locations to put the same handler
