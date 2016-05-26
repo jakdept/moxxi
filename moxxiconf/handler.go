@@ -9,10 +9,8 @@ import (
 )
 
 // FormHandler - creates and returns a Handler for both Query and Form requests
-func FormHandler(baseURL, confPath, confExt string, excludes []string,
-	confTempl, resTempl template.Template, subdomainLen int) http.HandlerFunc {
-
-	confWriter := confWrite(confPath, confExt, baseURL, subdomainLen, confTempl, excludes)
+func FormHandler(config) http.HandlerFunc {
+	confWriter := confWrite(config)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -41,7 +39,7 @@ func FormHandler(baseURL, confPath, confExt string, excludes []string,
 		}
 
 		port, _ := strconv.Atoi(r.Form.Get("port"))
-		config, err := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
+		siteConfig, err := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
 			r.Form["header"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
@@ -49,13 +47,13 @@ func FormHandler(baseURL, confPath, confExt string, excludes []string,
 			return
 		}
 
-		if config, err = confWriter(config); err != nil {
+		if siteConfig, err = confWriter(siteConfig); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			// TODO some log line? or no?
 			return
 		}
 
-		if err = resTempl.Execute(w, []siteParams{config}); err != nil {
+		if err = resTempl.Execute(w, []siteParams{siteConfig}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			// TODO some long line? or no?
 			return
