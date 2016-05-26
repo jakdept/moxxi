@@ -58,7 +58,7 @@ func TestFormHandler_POST(t *testing.T) {
 		r, err := http.NewRequest(test.reqMethod, test.reqURL,
 			strings.NewReader(params.Encode()))
 
-		http.HandlerFunc(handler).ServeHTTP(w,r)
+		http.HandlerFunc(handler).ServeHTTP(w, r)
 
 		log.Println(w.Body.String())
 

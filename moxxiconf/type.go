@@ -2,9 +2,10 @@ package moxxiConf
 
 import (
 	"fmt"
-	"strings"
-	"time"
 	"regexp"
+	"strings"
+	"text/template"
+	"time"
 )
 
 // PathSep is the path seperator used throughout this program
@@ -103,4 +104,24 @@ var isNotAlphaNum *regexp.Regexp
 
 func init() {
 	isNotAlphaNum = regexp.MustCompile("[^a-zA-Z0-9]")
+}
+
+const (
+	TypeStaticHandler = 1 << iota
+	TypeFormHandler
+	TypeJsonHandler
+)
+
+type HandlerConfig struct {
+	handlerType  int
+	handlerRoute string
+	baseURL      string
+	confPath     string
+	confExt      string
+	excludes     []string
+	confFile     string
+	confTempl    template.Template
+	resFile      string
+	resTempl     template.Template
+	subdomainLen int
 }

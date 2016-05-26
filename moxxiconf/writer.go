@@ -28,7 +28,7 @@ func validHost(s string) string {
 		case len(parts[i]) < 1:
 			parts = append(parts[:i], parts[i+1:]...)
 		case isNotAlphaNum.MatchString(parts[i]):
-			return "";
+			return ""
 		default:
 			i++
 		}
@@ -122,5 +122,5 @@ func parseCheckbox(in string) bool {
 			return true
 		}
 	}
-	return false;
+	return false
 }

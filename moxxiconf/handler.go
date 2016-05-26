@@ -115,10 +115,14 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 }
 
 // StaticHandler - creates and returns a Handler to simply respond with a static response to every request
-func StaticHandler(response []byte) http.HandlerFunc {
+func StaticHandler(config HandlerConfig) http.HandlerFunc {
+	res, err := ioutil.ReadFile(config.resFile)
+	if err != nil {
+		log.Printf("bad static response file %s - %v", config.resFile, err)
+	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write(response); err != nil {
+		if _, err := w.Write(res); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
