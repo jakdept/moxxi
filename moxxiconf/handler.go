@@ -8,6 +8,24 @@ import (
 	"text/template"
 )
 
+func StartServer(config MoxxiConf) error {
+	
+}
+
+func CreateMux(config MoxxiConf) http.Mux {
+	mux := http.NewServeMux()
+	for _, handler := range config.Handlers {
+		switch handler.handlerType {
+		case "json":
+			mux.HandleFunc(handler.handlerRoute, JSONHandler(handler))
+		case "form":
+			mux.HandleFunc(handler.handlerRoute, FormHandler(handler))
+		case "static":
+			mux.HandleFunc(handler.handlerRoute, StaticHandler(handler))
+		}
+	}
+}
+
 // FormHandler - creates and returns a Handler for both Query and Form requests
 func FormHandler(config) http.HandlerFunc {
 	confWriter := confWrite(config)
