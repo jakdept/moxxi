@@ -2,8 +2,8 @@ package moxxiConf
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
-	// "log"
 	"strconv"
 	"text/template"
 )

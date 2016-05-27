@@ -154,3 +154,8 @@ type HandlerConfig struct {
 	resTempl     template.Template
 	subdomainLen int
 }
+
+type MoxxiConf struct {
+	Handlers []HandlerConfig
+	Listen   string
+}
