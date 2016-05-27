@@ -61,10 +61,6 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 
 func confWrite(config HandlerConfig) func(siteParams) (siteParams, error) {
 
-	if config.subdomainLen < 1 {
-		config.subdomainLen = 1
-	}
-
 	return func(siteConfig siteParams) (siteParams, error) {
 
 		err := os.ErrExist

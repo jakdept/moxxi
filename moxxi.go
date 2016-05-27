@@ -23,7 +23,7 @@ func main() {
 	var config moxxiconf.MoxxiConf
 	err = Unmarshal(&config)
 	if err != nil {
-	  log.Fatalf("unable to decode config into struct, %v", err)
+		log.Fatalf("unable to decode config into struct, %v", err)
 	}
 
 	err = moxxiconf.CheckConfig(&config)

@@ -89,19 +89,21 @@ const (
 	ErrNoRandom
 	ErrNoHostname
 	ErrNoIP
+	ErrConfigBadHost
 )
 
 // specify the error message for each error
 var errMsg = map[int]string{
-	ErrCloseFile:    "failed to close the file [%s] - %v",
-	ErrRemoveFile:   "failed to remove file [%s] - %v",
-	ErrFilePerm:     "permission denied to create file [%s] - %v",
-	ErrFileUnexpect: "unknown error with file [%s] - %v",
-	ErrBadHost:      "bad hostname provided [%s]",
-	ErrBadIP:        "bad IP provided [%s]",
-	ErrNoRandom:     "was not given a new random domain - shutting down",
-	ErrNoHostname:   "no provided hostname",
-	ErrNoIP:         "no provided IP",
+	ErrCloseFile:     "failed to close the file [%s] - %v",
+	ErrRemoveFile:    "failed to remove file [%s] - %v",
+	ErrFilePerm:      "permission denied to create file [%s] - %v",
+	ErrFileUnexpect:  "unknown error with file [%s] - %v",
+	ErrBadHost:       "bad hostname provided [%s]",
+	ErrBadIP:         "bad IP provided [%s]",
+	ErrNoRandom:      "was not given a new random domain - shutting down",
+	ErrNoHostname:    "no provided hostname",
+	ErrNoIP:          "no provided IP",
+	ErrConfigBadHost: "Bad hostname for handler [%s]",
 }
 
 // HandlerLocFlag gives a built in way to specify multiple locations to put the same handler
@@ -135,12 +137,6 @@ func init() {
 	isNotAlphaNum = regexp.MustCompile("[^a-zA-Z0-9]")
 }
 
-const (
-	TypeStaticHandler = 1 << iota
-	TypeFormHandler
-	TypeJsonHandler
-)
-
 type HandlerConfig struct {
 	handlerType  int
 	handlerRoute string
@@ -158,4 +154,28 @@ type HandlerConfig struct {
 type MoxxiConf struct {
 	Handlers []HandlerConfig
 	Listen   string
+}
+
+func ProcessConfig(c *MoxxiConf) error {
+	var err error
+	for i := 1; i < len(c.Handlers); i++ {
+		if c.Handlers[i].confFile != "" {
+			c.Handlers[i].confTempl, err = template.ParseFiles([]string(c.Handlers[i].confFile))
+			if err != nil {
+				return err
+			}
+		}
+		if c.Handlers[i].resFile != "" && c.Handlers[i].handlerType != "static" {
+			c.Handlers[i].resTempl, err = template.ParseFiles([]string(c.Handlers[i].resFile))
+			if err != nil {
+				return err
+			}
+		}
+		if validHost(c.Handlers[i].baseURL) != c.Handlers[i].baseURL {
+			return &Err{Code: ErrConfigBadHost, value: c.Handlers[i].baseURL}
+		}
+		if c.Handlers[i].subdomainLen < 4 {
+			c.Handlers[i].subdomainLen = 4
+		}
+	}
 }
