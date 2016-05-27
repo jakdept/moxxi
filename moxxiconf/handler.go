@@ -8,10 +8,6 @@ import (
 	"text/template"
 )
 
-func StartServer(config MoxxiConf) error {
-	
-}
-
 func CreateMux(config MoxxiConf) http.Mux {
 	mux := http.NewServeMux()
 	for _, handler := range config.Handlers {
