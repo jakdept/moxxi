@@ -156,7 +156,40 @@ type MoxxiConf struct {
 	Listen   string
 }
 
-func ProcessConfig(c *MoxxiConf) error {
+func LoadConfig() (*MoxxiConf, error) {
+
+prepConfigDefaults()
+
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Printf("Fatal error config file: %s \n", err))
+		return nil, err
+	}
+
+	var config *moxxiconf.MoxxiConf
+	err = Unmarshal(config)
+	if err != nil {
+	  log.Fatalf("unable to decode config into struct, %v", err)
+	}
+	if err = verifyConfig(config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func prepConfigDefaults() {
+	// establish the config paths
+	viper.SetConfigName("config")
+	viper.AddConfigPath("/etc/moxxi/")
+	viper.AddConfigPath("$HOME/.moxxi")
+	viper.AddConfigPath(".")
+
+	// set default values for the config
+	viper.SetDefault("listen", ":8080")
+}
+
+func verifyConfig(c *MoxxiConf) error {
 	var err error
 	for i := 1; i < len(c.Handlers); i++ {
 		if c.Handlers[i].confFile != "" {

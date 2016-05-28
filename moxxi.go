@@ -11,22 +11,7 @@ import (
 
 func main() {
 
-	viper.SetConfigName("config")
-	viper.AddConfigPath("/etc/moxxi/")
-	viper.AddConfigPath("$HOME/.moxxi")
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
-	}
-
-	var config moxxiconf.MoxxiConf
-	err = Unmarshal(&config)
-	if err != nil {
-		log.Fatalf("unable to decode config into struct, %v", err)
-	}
-
-	err = moxxiconf.CheckConfig(&config)
+	err = moxxiconf.LoadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
