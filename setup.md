@@ -92,7 +92,7 @@ You should also probably consider adding access control to the moxxi control vho
 
 ### Firewall setup ###
 
-```bash
+```
 cat <<EOM >/etc/network/if-pre-up.d/iptables
 #!/bin/sh
 /sbin/iptables-restore < /etc/iptables
@@ -120,6 +120,8 @@ Copy the following files to `/home/moxxi`
 
 * `proxy.template`
 * `response.template`
+
+Copy the [config](moxxi.config) file to `/etc/moxxi`. (this config can be JSON or YAML or lots of formats)
 
 Copy the unit file to `/etc/systemd/system/moxxi.service`.
 

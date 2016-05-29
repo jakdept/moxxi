@@ -199,7 +199,7 @@ func LoadConfig() (*MoxxiConf, error) {
 
 func prepConfigDefaults() {
 	// establish the config paths
-	viper.SetConfigName("config")
+	viper.SetConfigName("moxxi.config")
 	viper.AddConfigPath("/etc/moxxi/")
 	viper.AddConfigPath("$HOME/.moxxi")
 	viper.AddConfigPath(".")
