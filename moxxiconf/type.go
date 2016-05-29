@@ -2,6 +2,8 @@ package moxxiConf
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -35,16 +37,27 @@ type siteParams struct {
 	StripHeaders []string
 }
 
+type Err interface {
+	error
+	LogError(*http.Request) string
+}
+
 // Err - the type used within my application for error handling
-type Err struct {
+type NewErr struct {
 	Code    int
 	value   string
 	deepErr error
 }
 
+func UpgradeError(e error) Err {
+	return NewErr{Code: ErrUpgradedError, deepErr: e}
+}
+
 // the function `Error` to make my custom errors work
-func (e *Err) Error() string {
+func (e NewErr) Error() string {
 	switch {
+	case e.Code == ErrUpgradedError && e.value == "":
+		return e.deepErr.Error()
 	case e.deepErr == nil && e.value == "":
 		return errMsg[e.Code]
 	case e.deepErr == nil && e.value != "":
@@ -55,9 +68,13 @@ func (e *Err) Error() string {
 }
 
 // the function `LogError` to print error log lines
-func (e *Err) LogError(r *http.Request) string {
+func (e NewErr) LogError(r *http.Request) string {
 	ts := time.Now()
 	switch {
+	case e.Code == ErrUpgradedError && e.value == "":
+		return fmt.Sprintf("%s %s",
+			ts.Format("02-Jan-2006:15:04:05-0700"),
+			errMsg[e.Code])
 	case e.deepErr == nil && e.value == "":
 		return fmt.Sprintf("%s %s",
 			ts.Format("02-Jan-2006:15:04:05-0700"),
@@ -80,7 +97,8 @@ func (e *Err) LogError(r *http.Request) string {
 
 // assign a unique id to each error
 const (
-	ErrCloseFile = 1 << iota
+	ErrUpgradedError = 1 << iota
+	ErrCloseFile
 	ErrRemoveFile
 	ErrFilePerm
 	ErrFileUnexpect
@@ -94,6 +112,7 @@ const (
 
 // specify the error message for each error
 var errMsg = map[int]string{
+	ErrUpgradedError: "not actually an error message",
 	ErrCloseFile:     "failed to close the file [%s] - %v",
 	ErrRemoveFile:    "failed to remove file [%s] - %v",
 	ErrFilePerm:      "permission denied to create file [%s] - %v",
@@ -138,16 +157,16 @@ func init() {
 }
 
 type HandlerConfig struct {
-	handlerType  int
+	handlerType  string
 	handlerRoute string
 	baseURL      string
 	confPath     string
 	confExt      string
 	excludes     []string
 	confFile     string
-	confTempl    template.Template
+	confTempl    *template.Template
 	resFile      string
-	resTempl     template.Template
+	resTempl     *template.Template
 	subdomainLen int
 }
 
@@ -158,18 +177,18 @@ type MoxxiConf struct {
 
 func LoadConfig() (*MoxxiConf, error) {
 
-prepConfigDefaults()
+	prepConfigDefaults()
 
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Printf("Fatal error config file: %s \n", err))
+		log.Printf("Fatal error config file: %s \n", err)
 		return nil, err
 	}
 
-	var config *moxxiconf.MoxxiConf
-	err = Unmarshal(config)
+	var config *MoxxiConf
+	err = viper.Unmarshal(config)
 	if err != nil {
-	  log.Fatalf("unable to decode config into struct, %v", err)
+		log.Fatalf("unable to decode config into struct, %v", err)
 	}
 	if err = verifyConfig(config); err != nil {
 		return nil, err
@@ -189,26 +208,27 @@ func prepConfigDefaults() {
 	viper.SetDefault("listen", ":8080")
 }
 
-func verifyConfig(c *MoxxiConf) error {
+func verifyConfig(c *MoxxiConf) Err {
 	var err error
 	for i := 1; i < len(c.Handlers); i++ {
 		if c.Handlers[i].confFile != "" {
-			c.Handlers[i].confTempl, err = template.ParseFiles([]string(c.Handlers[i].confFile))
+			c.Handlers[i].confTempl, err = template.ParseFiles(c.Handlers[i].confFile)
 			if err != nil {
-				return err
+				return UpgradeError(err)
 			}
 		}
 		if c.Handlers[i].resFile != "" && c.Handlers[i].handlerType != "static" {
-			c.Handlers[i].resTempl, err = template.ParseFiles([]string(c.Handlers[i].resFile))
+			c.Handlers[i].resTempl, err = template.ParseFiles(c.Handlers[i].resFile)
 			if err != nil {
-				return err
+				return UpgradeError(err)
 			}
 		}
 		if validHost(c.Handlers[i].baseURL) != c.Handlers[i].baseURL {
-			return &Err{Code: ErrConfigBadHost, value: c.Handlers[i].baseURL}
+			return &NewErr{Code: ErrConfigBadHost, value: c.Handlers[i].baseURL}
 		}
 		if c.Handlers[i].subdomainLen < 4 {
 			c.Handlers[i].subdomainLen = 4
 		}
 	}
+	return nil
 }

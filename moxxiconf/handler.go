@@ -2,13 +2,13 @@ package moxxiConf
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
-	"text/template"
 )
 
-func CreateMux(config MoxxiConf) http.Mux {
+func CreateMux(config MoxxiConf) *http.ServeMux {
 	mux := http.NewServeMux()
 	for _, handler := range config.Handlers {
 		switch handler.handlerType {
@@ -20,58 +20,54 @@ func CreateMux(config MoxxiConf) http.Mux {
 			mux.HandleFunc(handler.handlerRoute, StaticHandler(handler))
 		}
 	}
+	return mux
 }
 
 // FormHandler - creates and returns a Handler for both Query and Form requests
-func FormHandler(config) http.HandlerFunc {
+func FormHandler(config HandlerConfig) http.HandlerFunc {
 	confWriter := confWrite(config)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		err := r.ParseForm()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if extErr := r.ParseForm(); extErr != nil {
+			http.Error(w, extErr.Error(), http.StatusBadRequest)
 			return
 		}
 
-		var tls bool
-
 		if r.Form.Get("host") == "" {
-			err = &Err{Code: ErrNoHostname}
-			http.Error(w, err, http.StatusPreconditionFailed)
-			log.Println(err.LogError(r))
+			pkgErr := &NewErr{Code: ErrNoHostname}
+			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 
 		if r.Form.Get("ip") == "" {
-			err = &Err{Code: ErrNoIP}
-			http.Error(w, err, http.StatusPreconditionFailed)
-			log.Println(err.LogError(r))
+			pkgErr := &NewErr{Code: ErrNoIP}
+			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 
-		if tls = parseCheckbox(r.Form.Get("tls")); err != nil {
-			tls = DefaultBackendTLS
-		}
+		tls := parseCheckbox(r.Form.Get("tls"))
 
 		port, _ := strconv.Atoi(r.Form.Get("port"))
-		siteConfig, err := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
+		vhost, pkgErr := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
 			r.Form["header"])
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusPreconditionFailed)
-			log.Println(err.LogError(r))
+		if pkgErr != nil {
+			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 
-		if siteConfig, err = confWriter(siteConfig); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Println(err.LogError(r))
+		if vhost, pkgErr = confWriter(vhost); pkgErr != nil {
+			http.Error(w, pkgErr.Error(), http.StatusInternalServerError)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 
-		if err = resTempl.Execute(w, []siteParams{siteConfig}); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Println(err.LogError(r))
+		if extErr := config.resTempl.Execute(w, []siteParams{vhost}); extErr != nil {
+			http.Error(w, pkgErr.Error(), http.StatusInternalServerError)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 		return
@@ -120,9 +116,9 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 			responseConfig = append(responseConfig, confConfig)
 		}
 
-		if err = resTempl.Execute(w, responseConfig); err != nil {
+		if err = config.resTempl.Execute(w, responseConfig); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Println(err.LogError(r))
+			log.Println(err.Error())
 			return
 		}
 		return

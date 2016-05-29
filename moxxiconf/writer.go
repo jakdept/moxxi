@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"text/template"
 )
 
 func inArr(a []string, t string) bool {
@@ -36,15 +35,15 @@ func validHost(s string) string {
 	return strings.Join(parts, DomainSep)
 }
 
-func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, error) {
+func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, Err) {
 	var conf siteParams
 	if conf.IntHost = validHost(host); conf.IntHost == "" {
-		return siteParams{}, &Err{Code: ErrBadHost, value: host}
+		return siteParams{}, &NewErr{Code: ErrBadHost, value: host}
 	}
 
 	tempIP := net.ParseIP(ip)
 	if tempIP == nil {
-		return siteParams{}, &Err{Code: ErrBadIP, value: ip}
+		return siteParams{}, &NewErr{Code: ErrBadIP, value: ip}
 	}
 
 	conf.IntPort = 80
@@ -59,9 +58,9 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 	return conf, nil
 }
 
-func confWrite(config HandlerConfig) func(siteParams) (siteParams, error) {
+func confWrite(config HandlerConfig) func(siteParams) (siteParams, Err) {
 
-	return func(siteConfig siteParams) (siteParams, error) {
+	return func(siteConfig siteParams) (siteParams, Err) {
 
 		err := os.ErrExist
 		var randPart, fileName string
@@ -90,20 +89,20 @@ func confWrite(config HandlerConfig) func(siteParams) (siteParams, error) {
 		siteConfig.ExtHost = randPart
 
 		if err == os.ErrPermission {
-			return siteParams{ExtHost: randPart}, &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
+			return siteParams{ExtHost: randPart}, &NewErr{Code: ErrFilePerm, value: fileName, deepErr: err}
 		} else if err != nil {
-			return siteParams{ExtHost: randPart}, &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
+			return siteParams{ExtHost: randPart}, &NewErr{Code: ErrFileUnexpect, value: fileName, deepErr: err}
 		}
 
 		tErr := config.confTempl.Execute(f, siteConfig)
 
 		if err = f.Close(); err != nil {
-			return siteParams{}, &Err{Code: ErrCloseFile, value: fileName, deepErr: err}
+			return siteParams{}, &NewErr{Code: ErrCloseFile, value: fileName, deepErr: err}
 		}
 
 		if tErr != nil {
 			if err = os.Remove(fileName); err != nil {
-				return siteParams{}, &Err{Code: ErrRemoveFile, value: fileName, deepErr: err}
+				return siteParams{}, &NewErr{Code: ErrRemoveFile, value: fileName, deepErr: err}
 			}
 		}
 
