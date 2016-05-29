@@ -1,5 +1,7 @@
 package moxxiConf
 
+/*
+
 import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -37,6 +39,18 @@ func TestFormHandler_POST(t *testing.T) {
 		},
 	}
 
+	testConfig := HandlerConfig{
+		baseURL      string
+		confPath     string
+		confExt      string
+		excludes     []string
+		confFile     string
+		confTempl    *template.Template
+		resFile      string
+		resTempl     *template.Template
+		subdomainLen int
+	}
+
 	templPath := os.TempDir()
 	templExt := ".out"
 	baseURL := "domain.com"
@@ -70,3 +84,4 @@ func TestFormHandler_POST(t *testing.T) {
 		assert.Equal(t, test.fileOut, string(contents), "wrong data written to the file")
 	}
 }
+*/

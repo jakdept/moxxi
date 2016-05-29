@@ -107,7 +107,7 @@ func TestConfCheck(t *testing.T) {
 			port:           80,
 			blockedHeaders: []string{"a", "b", "c"},
 			exp:            siteParams{},
-			expErr:         &Err{Code: ErrBadHost, value: "com"},
+			expErr:         &NewErr{Code: ErrBadHost, value: "com"},
 		}, {
 			host:           "domain.com",
 			ip:             "127.1",
@@ -115,7 +115,7 @@ func TestConfCheck(t *testing.T) {
 			port:           80,
 			blockedHeaders: []string{"a", "b", "c"},
 			exp:            siteParams{},
-			expErr:         &Err{Code: ErrBadIP, value: "127.1"},
+			expErr:         &NewErr{Code: ErrBadIP, value: "127.1"},
 		},
 	}
 
@@ -156,15 +156,18 @@ func TestConfWrite(t *testing.T) {
 		},
 	}
 
-	templPath := os.TempDir()
-	templExt := ".out"
-	baseURL := "proxy.com"
-	subdomainLen := 1
-	excludes := []string{"a.domain.com", "b.domain.com", "c.domain.com"}
 	templateString := `{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}} {{ range .StripHeaders }}{{.}} {{end}}`
-	templ := template.Must(template.New("testing").Parse(templateString))
 
-	w := confWrite(templPath, templExt, baseURL, subdomainLen, *templ, excludes)
+	testConfig := HandlerConfig{
+		baseURL:      "proxy.com",
+		confPath:     os.TempDir(),
+		confExt:      ".out",
+		excludes:     []string{"a.domain.com", "b.domain.com", "c.domain.com"},
+		confTempl:    template.Must(template.New("testing").Parse(templateString)),
+		subdomainLen: 1,
+	}
+
+	w := confWrite(testConfig)
 
 	var outConf siteParams
 	var err, fileErr error
@@ -173,7 +176,7 @@ func TestConfWrite(t *testing.T) {
 	for _, test := range testData {
 		outConf, err = w(test.in)
 
-		contents, fileErr = ioutil.ReadFile(templPath + PathSep + outConf.ExtHost + templExt)
+		contents, fileErr = ioutil.ReadFile(testConfig.confPath + PathSep + outConf.ExtHost + testConfig.confExt)
 		assert.Nil(t, fileErr, "problem reading file - %v", fileErr)
 
 		assert.Equal(t, test.out, string(contents), "file contents did not match expected")
@@ -196,18 +199,21 @@ func TestConfWrite_badLocation(t *testing.T) {
 		},
 	}
 
-	templPath := "/bad/directory"
-	templExt := ".out"
-	baseURL := "proxy.com"
-	subdomainLen := 1
-	excludes := []string{"a.domain.com", "b.domain.com", "c.domain.com"}
 	templateString := `{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}} {{ range .StripHeaders }}{{.}} {{end}}`
-	templ := template.Must(template.New("testing").Parse(templateString))
 
-	w := confWrite(templPath, templExt, baseURL, subdomainLen, *templ, excludes)
+	testConfig := HandlerConfig{
+		baseURL:      "proxy.com",
+		confPath:     "/bad/directory",
+		confExt:      ".out",
+		excludes:     []string{"a.domain.com", "b.domain.com", "c.domain.com"},
+		confTempl:    template.Must(template.New("testing").Parse(templateString)),
+		subdomainLen: 1,
+	}
+
+	w := confWrite(testConfig)
 
 	outConf, err := w(test.in)
-	badFile := templPath + PathSep + outConf.ExtHost + templExt
+	badFile := testConfig.confPath + PathSep + outConf.ExtHost + testConfig.confExt
 	test.err = fmt.Errorf("unknown error with file [%s] - open %s: no such file or directory", badFile, badFile)
 
 	assert.Equal(t, test.err.Error(), err.Error(), "errors did not match up")

@@ -13,25 +13,25 @@ func TestErr_Error(t *testing.T) {
 		out string
 	}{
 		{
-			Err{ErrCloseFile, "/tmp/testfile", fakeError},
+			NewErr{ErrCloseFile, "/tmp/testfile", fakeError},
 			"failed to close the file [/tmp/testfile] - fake error",
 		}, {
-			Err{ErrRemoveFile, "/tmp/testfile", fakeError},
+			NewErr{ErrRemoveFile, "/tmp/testfile", fakeError},
 			"failed to remove file [/tmp/testfile] - fake error",
 		}, {
-			Err{ErrFilePerm, "/tmp/testfile", fakeError},
+			NewErr{ErrFilePerm, "/tmp/testfile", fakeError},
 			"permission denied to create file [/tmp/testfile] - fake error",
 		}, {
-			Err{ErrFileUnexpect, "/tmp/testfile", fakeError},
+			NewErr{ErrFileUnexpect, "/tmp/testfile", fakeError},
 			"unknown error with file [/tmp/testfile] - fake error",
 		}, {
-			Err{ErrBadHost, "/tmp/testfile", nil},
+			NewErr{ErrBadHost, "/tmp/testfile", nil},
 			"bad hostname provided [/tmp/testfile]",
 		}, {
-			Err{ErrBadIP, "/tmp/testfile", nil},
+			NewErr{ErrBadIP, "/tmp/testfile", nil},
 			"bad IP provided [/tmp/testfile]",
 		}, {
-			Err{ErrNoRandom, "", nil},
+			NewErr{ErrNoRandom, "", nil},
 			"was not given a new random domain - shutting down",
 		},
 	}
