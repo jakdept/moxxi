@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 	"text/template"
+	// "strings"
 )
 
 func TestInArr(t *testing.T) {
@@ -213,7 +214,12 @@ func TestConfWrite_badLocation(t *testing.T) {
 	w := confWrite(testConfig)
 
 	outConf, err := w(test.in)
-	badFile := testConfig.confPath + PathSep + outConf.ExtHost + testConfig.confExt
+	badFile := testConfig.confPath
+	badFile += PathSep
+	badFile += outConf.ExtHost
+	badFile += DomainSep
+	badFile += testConfig.baseURL
+	badFile += testConfig.confExt
 	test.err = fmt.Errorf("unknown error with file [%s] - open %s: no such file or directory", badFile, badFile)
 
 	assert.Equal(t, test.err.Error(), err.Error(), "errors did not match up")

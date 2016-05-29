@@ -86,7 +86,10 @@ func confWrite(config HandlerConfig) func(siteParams) (siteParams, Err) {
 			f, err = os.Create(fileName)
 		}
 
-		siteConfig.ExtHost = randPart
+		siteConfig.ExtHost = strings.Join([]string{
+			randPart,
+			DomainSep,
+			config.baseURL}, "")
 
 		if err == os.ErrPermission {
 			return siteParams{ExtHost: randPart}, &NewErr{Code: ErrFilePerm, value: fileName, deepErr: err}
