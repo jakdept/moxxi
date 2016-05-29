@@ -2,24 +2,20 @@ package main
 
 import (
 	"github.com/JackKnifed/moxxi/moxxiconf"
-	"github.com/spf13/viper"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"text/template"
 )
 
 func main() {
-
-	err = moxxiconf.LoadConfig()
+	config, err := moxxiConf.LoadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	mux := moxxiconf.CreateMux(config)
+	mux := moxxiConf.CreateMux(config)
 
 	srv := http.Server{
-		Addr:         *listen,
+		Addr:         config.Listen,
 		Handler:      mux,
 		ReadTimeout:  moxxiConf.ConnTimeout,
 		WriteTimeout: moxxiConf.ConnTimeout,

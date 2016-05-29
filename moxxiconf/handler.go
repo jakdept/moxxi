@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-func CreateMux(config MoxxiConf) *http.ServeMux {
+func CreateMux(config *MoxxiConf) *http.ServeMux {
 	mux := http.NewServeMux()
 	for _, handler := range config.Handlers {
 		switch handler.handlerType {
