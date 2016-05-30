@@ -175,23 +175,32 @@ type MoxxiConf struct {
 	Listen   string
 }
 
-func LoadConfig() (*MoxxiConf, error) {
-
-	prepConfigDefaults()
-
+func loadConfig() (MoxxiConf, error) {
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Printf("Fatal error config file: %s \n", err)
-		return nil, err
+		return MoxxiConf{}, err
 	}
 
-	var config *MoxxiConf
-	err = viper.Unmarshal(config)
+	var config MoxxiConf
+	err = viper.Unmarshal(&config)
 	if err != nil {
 		log.Fatalf("unable to decode config into struct, %v", err)
 	}
-	if err = verifyConfig(config); err != nil {
-		return nil, err
+
+	return config, nil
+}
+
+func LoadConfig() (MoxxiConf, error) {
+	prepConfigDefaults()
+
+	config, err := loadConfig()
+	if err != nil {
+		return MoxxiConf{}, err
+	}
+
+	if err = verifyConfig(&config); err != nil {
+		return MoxxiConf{}, err
 	}
 
 	return config, nil
