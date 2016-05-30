@@ -208,9 +208,7 @@ func LoadConfig() (MoxxiConf, error) {
 
 func prepConfigDefaults() {
 	// establish the config paths
-	viper.SetConfigName("config.json")
-	viper.SetConfigName("config.yaml")
-	viper.SetConfigName("config.toml")
+	viper.SetConfigName("config")
 	viper.AddConfigPath("/etc/moxxi/")
 	viper.AddConfigPath("$HOME/.moxxi")
 	viper.AddConfigPath(".")
