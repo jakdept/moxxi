@@ -1,5 +1,31 @@
-package MoxxiConf
+package moxxiConf
 
+import (
+	"fmt"
+	"github.com/spf13/viper"
+	"log"
+	"text/template"
+)
+
+func LoadConfig() ([]string, []HandlerConfig, Err) {
+	config := prepConfig()
+
+	if err := config.ReadInConfig(); err != nil {
+		log.Printf("Fatal error config file: %s \n", err)
+		return []string{}, []HandlerConfig{}, UpgradeError(err)
+	}
+
+	if err := verifyConfig(config); err != nil {
+		return []string{}, []HandlerConfig{}, UpgradeError(err)
+	}
+
+	handlers, listens, err := loadConfig(config)
+	if err != nil {
+		return []string{}, []HandlerConfig{}, err
+	}
+
+	return handlers, listens, nil
+}
 
 func prepConfig() *viper.Viper {
 
@@ -13,7 +39,7 @@ func prepConfig() *viper.Viper {
 	// set default values for the config
 	c.SetDefault("listen", []string{":8080"})
 
-	return &c
+	return c
 
 }
 
@@ -36,7 +62,7 @@ func loadConfig(c *viper.Viper) ([]string, []HandlerConfig, Err) {
 		return []string{}, []HandlerConfig{}, returnErr
 	}
 
-	return handlers, listens, nil
+	return listens, handlers, nil
 }
 
 func verifyConfig(c *viper.Viper) Err {
@@ -171,26 +197,5 @@ func verifyConfig(c *viper.Viper) Err {
 			c.Set(base+"resTempl", template)
 		}
 	}
-}
-
-func LoadConfig() ([]string, []HandlerConfig, Err) {
-	config := prepConfig()
-
-	// #TODO# clean this
-	err := config.ReadInConfig()
-	if err != nil {
-		log.Printf("Fatal error config file: %s \n", err)
-		return MoxxiConf{}, err
-	}
-
-	if err = verifyConfig(config); err != nil {
-		return []string{}, []HandlerConfig{}, UpgradeError(err)
-	}
-
-	listens, handlers, err := loadConfig()
-	if err != nil {
-		return listens, handlers, err
-	}
-
-	return config, nil
+	return nil
 }

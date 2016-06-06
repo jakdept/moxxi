@@ -1,10 +1,6 @@
 package moxxiConf
 
 import (
-	"fmt"
-	"github.com/spf13/viper"
-	"log"
-	"net/http"
 	"regexp"
 	"strings"
 	"text/template"
@@ -84,4 +80,3 @@ func (f *HandlerLocFlag) Set(value string) error {
 func (f HandlerLocFlag) GetOne(i int) string {
 	return f[i]
 }
-

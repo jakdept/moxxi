@@ -14,12 +14,20 @@ func main() {
 
 	mux := moxxiConf.CreateMux(handlers)
 
-	srv := http.Server{
-		Addr:         config.Listen,
-		Handler:      mux,
-		ReadTimeout:  moxxiConf.ConnTimeout,
-		WriteTimeout: moxxiConf.ConnTimeout,
+	var errChan chan error
+
+	for _, singleListener := range listens {
+		srv := http.Server{
+			Addr:         singleListener,
+			Handler:      mux,
+			ReadTimeout:  moxxiConf.ConnTimeout,
+			WriteTimeout: moxxiConf.ConnTimeout,
+		}
+
+		go func() {
+			errChan <- srv.ListenAndServe()
+		}()
 	}
 
-	log.Fatal(srv.ListenAndServe())
+	log.Fatal(<-errChan)
 }
