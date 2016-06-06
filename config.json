@@ -1,6 +1,6 @@
 {
   "Listen": ":8080",
-  "Handlers": [
+  "Handler": [
     {
       "HandlerType": "static",
       "HandlerRoute": "/",

@@ -7,12 +7,12 @@ import (
 )
 
 func main() {
-	config, err := moxxiConf.LoadConfig()
+	listens, handlers, err := moxxiConf.LoadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	mux := moxxiConf.CreateMux(config)
+	mux := moxxiConf.CreateMux(handlers)
 
 	srv := http.Server{
 		Addr:         config.Listen,
