@@ -45,7 +45,7 @@ type HandlerConfig struct {
 	baseURL      string
 	confPath     string
 	confExt      string
-	excludes     []string
+	exclude      []string
 	confFile     string
 	confTempl    *template.Template
 	resFile      string
