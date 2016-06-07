@@ -118,8 +118,8 @@ func validateConfig(c *map[string]interface{}) Err {
 	}
 
 	// test and propagate handlers
-	for id, eachHandler := range handlers {
-		locErr := validateConfigHandler(c, id, eachHandler)
+	for id, _ := range handlers {
+		locErr := validateConfigHandler(c, id)
 		if locErr != nil {
 			return locErr
 		}
@@ -128,22 +128,46 @@ func validateConfig(c *map[string]interface{}) Err {
 	return nil
 }
 
-func loadConfig(c *viper.Viper) ([]string, []HandlerConfig, Err) {
+// ##TODO##
+func validateConfigHandler(c *map[string}interface{}, id int) Err {
 
-	var handlers []HandlerConfig
+}
+
+func loadConfig(c *map[string]interface{}) ([]string, []HandlerConfig, Err) {
+
 	var listens []string
-
-	err := c.UnmarshalKey("handler", &handlers)
-	if err != nil {
-		returnErr := NewErr{Code: ErrConfigBadExtract, value: "handlers", deepErr: err}
-		return []string{}, []HandlerConfig{}, returnErr
+	if listens, ok := c["listen"].([]string); !ok {
+		return []string{}, []HandlerConfig{}, NewErr{
+			Code: ErrConfigBadStructure,
+			value: "listen",
+			deepErr: fmt.Errorf("wrong type of %T", c["listen"]),
+		}
 	}
 
-	err = c.UnmarshalKey("listen", &listens)
-	if err != nil {
-		returnErr := NewErr{Code: ErrConfigBadExtract, value: "listen", deepErr: err}
-		return []string{}, []HandlerConfig{}, returnErr
+	var handlers []HandlerConfig
+	var dirtyHandlers []interface{}
+
+	if dirtyHandlers, ok := c["handler"].([]interface{}); !ok{
+		return []string{}, []HandlerConfig{}, NewErr{
+			Code: ErrConfigBadStructure,
+			value: "handler",
+			deepErr: fmt.Errorf("wrong type of %T", c["listen"]),
+		}
+	}
+
+	for _, oneHandler := range dirtyHandlers {
+		cleanHandler, err := decodeHandler(oneHandler)
+		if err != nil {
+			return []string{}, []HandlerConfig{}, err
+		} else {
+			handlers = append(handlers, cleanHandler)
+		}
 	}
 
 	return listens, handlers, nil
+}
+
+// ##TODO##
+func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
+
 }
