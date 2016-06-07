@@ -39,7 +39,7 @@ func prepConfig() (*map[string]interface{}, Err) {
 	var globErr error
 	var c map[string]interface{}
 	for _, configTry := range possibleConfigs {
-		data, globErr := ioutil.ReadFile(configTry)
+		data, globErr = ioutil.ReadFile(configTry)
 		switch globErr {
 		case os.ErrNotExist:
 			continue
@@ -65,7 +65,9 @@ func prepConfig() (*map[string]interface{}, Err) {
 	return &c, nil
 }
 
-func validateConfig(c *map[string]interface{}) Err {
+func validateConfig(dirtyConfig *map[string]interface{}) Err {
+c := *dirtyConfig
+
 	// clean up array top level lines
 	for _, part := range []string{"listen", "exclude"} {
 		if _, ok := c[part]; ok {
@@ -96,7 +98,7 @@ func validateConfig(c *map[string]interface{}) Err {
 
 	if _, ok := c["subdomainLen"]; ok {
 		var subdomainLen int
-		if subdomainLen, ok := c["subdomainLen"].(int); !ok {
+		if subdomainLen, ok = c["subdomainLen"].(int); !ok {
 			return NewErr{Code: ErrConfigBadStructure, value: "subdomainLen"}
 		}
 		if subdomainLen < 8 {
@@ -115,34 +117,55 @@ func validateConfig(c *map[string]interface{}) Err {
 
 	// test and propagate handlers
 	for id, _ := range handlers {
-		locErr := validateConfigHandler(c, id)
+		locErr := validateConfigHandler(&c, id)
 		if locErr != nil {
 			return locErr
 		}
 	}
 
+	dirtyConfig = &c
+
 	return nil
 }
 
-// ##TODO##
-func validateConfigHandler(c *map[string]interface{}, id int) Err {
+func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
+
+	// unpack everything
+	c := *pConfig
+	var allHandlers []interface{}
+	var h map[string]interface{}
+	var ok bool
+
+	if allHandlers, ok = c["handler"].([]interface{}); !ok {
+		return NewErr{
+			Code:  ErrConfigBadStructure,
+			value: "handler",
+		}
+	}
+	if h, ok = allHandlers[id].(map[string]interface{}); !ok {
+		return NewErr{
+			Code:  ErrConfigBadStructure,
+			value: "handler",
+		}
+	}
+
 	// check the exclude
-	if _, ok := c["handler"][id]["exclude"]; ok {
+	if _, ok := h["exclude"]; ok {
 		// if it exists, make it an array
-		if _, ok := c["handler"][id]["exclude"].([]interface{}); !ok {
-			c["handler"][id]["exclude"] = []interface{}{c["handler"][id]["exclude"]}
+		if _, ok := h["exclude"].([]interface{}); !ok {
+			h["exclude"] = []interface{}{h["exclude"]}
 		}
 
 		// check to make sure it's a string array
-		if _, ok := c["handler"][id]["exclude"].([]string); !ok {
+		if _, ok := h["exclude"].([]string); !ok {
 			return NewErr{Code: ErrConfigBadStructure, value: "exclude"}
 		}
 	} else {
 		// if it does not exist, propagate it from above
 		if _, ok := c["exclude"]; ok {
-			c["handler"][id]["exclude"] = c["exclude"]
+			h["exclude"] = c["exclude"]
 		} else {
-			c["handler"][id]["exclude"] = []string{}
+			h["exclude"] = []string{}
 		}
 	}
 
@@ -154,22 +177,22 @@ func validateConfigHandler(c *map[string]interface{}, id int) Err {
 		"confFile",
 		"resFile",
 	} {
-		if _, ok := c["handler"][id][part]; ok {
-			if _, ok := c["handler"][id][part].(string); !ok {
+		if _, ok := h[part]; ok {
+			if _, ok := h[part].(string); !ok {
 				return NewErr{Code: ErrConfigBadStructure, value: part}
 			}
 		} else {
 			if _, ok := c[part]; ok {
-				c["handler"][id][part] = c[part]
+				h[part] = c[part]
 			} else {
-				c["handler"][id][part] = string{}
+				h[part] = ""
 			}
 		}
 	}
 
-	if _, ok := c["handler"][id]["subdomainLen"]; ok {
+	if _, ok = h["subdomainLen"]; ok {
 		var subdomainLen int
-		if subdomainLen, ok := c["subdomainLen"].(int); !ok {
+		if subdomainLen, ok = c["subdomainLen"].(int); !ok {
 			return NewErr{Code: ErrConfigBadStructure, value: "subdomainLen"}
 		}
 		if subdomainLen < 8 {
@@ -177,19 +200,27 @@ func validateConfigHandler(c *map[string]interface{}, id int) Err {
 		}
 	} else {
 		if _, ok := c["subdomainLen"]; ok {
-			c["handler"][id]["subdomainLen"] = c["subdomainLen"]
+			h["subdomainLen"] = c["subdomainLen"]
 		} else {
-			c["handler"][id]["subdomainLen"] = 8
+			h["subdomainLen"] = 8
 		}
 	}
 
+	// pack things back in
+	allHandlers[id] = h
+	c["handler"] = allHandlers
+	pConfig = &c
 	return nil
 }
 
-func loadConfig(c *map[string]interface{}) ([]string, []HandlerConfig, Err) {
+func loadConfig(pConfig *map[string]interface{}) (
+	[]string, []HandlerConfig, Err) {
 
+	c := *pConfig
+	var ok bool
 	var listens []string
-	if listens, ok := c["listen"].([]string); !ok {
+
+	if listens, ok = c["listen"].([]string); !ok {
 		return []string{}, []HandlerConfig{}, NewErr{
 			Code:    ErrConfigBadStructure,
 			value:   "listen",
@@ -200,7 +231,7 @@ func loadConfig(c *map[string]interface{}) ([]string, []HandlerConfig, Err) {
 	var handlers []HandlerConfig
 	var dirtyHandlers []interface{}
 
-	if dirtyHandlers, ok := c["handler"].([]interface{}); !ok {
+	if dirtyHandlers, ok = c["handler"].([]interface{}); !ok {
 		return []string{}, []HandlerConfig{}, NewErr{
 			Code:    ErrConfigBadStructure,
 			value:   "handler",
@@ -224,7 +255,9 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 	var h HandlerConfig
 
 	var addressed map[string]interface{}
-	if addressed, ok := dirtyHandler.(map[string]interface{}); !ok {
+	var ok bool
+
+	if addressed, ok = dirtyHandler.(map[string]interface{}); !ok {
 		return HandlerConfig{}, NewErr{
 			Code:    ErrConfigBadStructure,
 			value:   fmt.Sprintf("%#v", dirtyHandler),
@@ -232,7 +265,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 		}
 	}
 
-	if _, ok := addressed["handlerType"]; ok {
+	if _, ok = addressed["handlerType"]; ok {
 		if h.handlerType, ok = addressed["handlerType"].(string); !ok {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigBadStructure,
@@ -240,7 +273,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 			}
 		}
 	}
-	if _, ok := addressed["handlerRoute"]; ok {
+	if _, ok = addressed["handlerRoute"]; ok {
 		if h.handlerRoute, ok = addressed["handlerRoute"].(string); !ok {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigBadStructure,
@@ -249,7 +282,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 		}
 	}
 
-	if _, ok := addressed["baseURL"]; ok {
+	if _, ok = addressed["baseURL"]; ok {
 		if h.baseURL, ok = addressed["baseURL"].(string); !ok {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigBadStructure,
@@ -257,7 +290,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 			}
 		}
 	}
-	if _, ok := addressed["confPath"]; ok {
+	if _, ok = addressed["confPath"]; ok {
 		if h.confPath, ok = addressed["confPath"].(string); !ok {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigBadStructure,
@@ -265,7 +298,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 			}
 		}
 	}
-	if _, ok := addressed["confExt"]; ok {
+	if _, ok = addressed["confExt"]; ok {
 		if h.confExt, ok = addressed["confExt"].(string); !ok {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigBadStructure,
@@ -274,7 +307,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 		}
 	}
 
-	if _, ok := addressed["exclude"]; ok {
+	if _, ok = addressed["exclude"]; ok {
 		if h.exclude, ok = addressed["exclude"].([]string); !ok {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigBadStructure,
@@ -283,7 +316,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 		}
 	}
 
-	if _, ok := addressed["subdomainLen"]; ok {
+	if _, ok = addressed["subdomainLen"]; ok {
 		if h.subdomainLen, ok = addressed["subdomainLen"].(int); !ok {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigBadStructure,
@@ -293,7 +326,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 	}
 
 	var err error
-	if _, ok := addressed["confFile"]; ok {
+	if _, ok = addressed["confFile"]; ok {
 		if workFile, ok := addressed["confFile"].(string); !ok {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigBadStructure,
@@ -306,14 +339,14 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 			}
 		}
 	}
-	if _, ok := addressed["resFile"]; ok {
+	if _, ok = addressed["resFile"]; ok {
 		if workFile, ok := addressed["resFile"].(string); !ok {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigBadStructure,
 				value: "resFile",
 			}
 		} else if addressed["handlerType"] != "static" {
-			h.resFile, err = template.ParseFiles(workFile)
+			h.resTempl, err = template.ParseFiles(workFile)
 			if err != nil {
 				return HandlerConfig{}, UpgradeError(err)
 			}
