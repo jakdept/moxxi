@@ -38,17 +38,18 @@ func prepConfig() (*map[string]interface{}, Err) {
 	var data []byte
 	var globErr error
 	var c map[string]interface{}
+ValidConfig:
 	for _, configTry := range possibleConfigs {
 		data, globErr = ioutil.ReadFile(configTry)
 		switch globErr {
 		case os.ErrNotExist:
-			continue
 		case nil:
-			break
+			break ValidConfig
 		default:
 			return nil, NewErr{
 				Code:    ErrConfigBadRead,
-				deepErr: fmt.Errorf("bad config file - %s", configTry),
+				value:   configTry,
+				deepErr: globErr,
 			}
 		}
 	}
@@ -66,17 +67,26 @@ func prepConfig() (*map[string]interface{}, Err) {
 }
 
 func validateConfig(dirtyConfig *map[string]interface{}) Err {
-c := *dirtyConfig
+	c := *dirtyConfig
 
 	// clean up array top level lines
 	for _, part := range []string{"listen", "exclude"} {
 		if _, ok := c[part]; ok {
-			if _, ok := c[part].([]interface{}); !ok {
+			chkArray, ok := c[part].([]interface{})
+			if !ok {
 				c[part] = []interface{}{c[part]}
+				chkArray = []interface{}{c[part]}
 			}
 
-			if _, ok := c[part].([]string); !ok {
-				return NewErr{Code: ErrConfigBadStructure, value: part}
+			// cannot type assert to ([]string) so i have to go through the parts?
+			for _, each := range chkArray {
+				if _, ok = each.(string); !ok {
+					return NewErr{
+						Code:    ErrConfigBadStructure,
+						value:   part,
+						deepErr: fmt.Errorf("%T - %#v", c[part], c[part]),
+					}
+				}
 			}
 		}
 	}
@@ -99,7 +109,11 @@ c := *dirtyConfig
 	if _, ok := c["subdomainLen"]; ok {
 		var subdomainLen int
 		if subdomainLen, ok = c["subdomainLen"].(int); !ok {
-			return NewErr{Code: ErrConfigBadStructure, value: "subdomainLen"}
+			return NewErr{
+				Code:    ErrConfigBadStructure,
+				value:   "subdomainLen",
+				deepErr: fmt.Errorf("%T - %#v", c["subdomainLen"], c["subdomainLen"]),
+			}
 		}
 		if subdomainLen < 8 {
 			c["subdomainLen"] = 8
@@ -156,6 +170,7 @@ func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
 			h["exclude"] = []interface{}{h["exclude"]}
 		}
 
+		// cannot type assert to ([]string) so have to go through the parts
 		// check to make sure it's a string array
 		if _, ok := h["exclude"].([]string); !ok {
 			return NewErr{Code: ErrConfigBadStructure, value: "exclude"}
@@ -179,7 +194,11 @@ func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
 	} {
 		if _, ok := h[part]; ok {
 			if _, ok := h[part].(string); !ok {
-				return NewErr{Code: ErrConfigBadStructure, value: part}
+				return NewErr{
+					Code:    ErrConfigBadStructure,
+					value:   part,
+					deepErr: fmt.Errorf("handler portion - %T - %#v", h[part], h[part]),
+				}
 			}
 		} else {
 			if _, ok := c[part]; ok {
@@ -191,12 +210,20 @@ func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
 	}
 
 	if _, ok = h["subdomainLen"]; ok {
-		var subdomainLen int
-		if subdomainLen, ok = c["subdomainLen"].(int); !ok {
-			return NewErr{Code: ErrConfigBadStructure, value: "subdomainLen"}
+		switch h["subdomainLen"].(type) {
+		case int:
+		case float64:
+			h["subdomainLen"] = int(h["subdomainLen"].(float64))
+		default:
+			return NewErr{
+				Code:  ErrConfigBadStructure,
+				value: "subdomainLen",
+				deepErr: fmt.Errorf("handler sub portion wrong type %T - %#v",
+					h["subdomainLen"], h["subdomainLen"]),
+			}
 		}
-		if subdomainLen < 8 {
-			c["subdomainLen"] = 8
+		if h["subdomainLen"].(int) < 8 {
+			h["subdomainLen"] = 8
 		}
 	} else {
 		if _, ok := c["subdomainLen"]; ok {
@@ -220,11 +247,23 @@ func loadConfig(pConfig *map[string]interface{}) (
 	var ok bool
 	var listens []string
 
-	if listens, ok = c["listen"].([]string); !ok {
+	if untypedListens, ok := c["listen"].([]interface{}); ok {
+		for _, each := range untypedListens {
+			if oneListen, ok := each.(string); ok {
+				listens = append(listens, oneListen)
+			} else {
+				return []string{}, []HandlerConfig{}, NewErr{
+					Code:    ErrConfigLoadType,
+					value:   "listen",
+					deepErr: fmt.Errorf("wrong type of %T - %#v", each, each),
+				}
+			}
+		}
+	} else {
 		return []string{}, []HandlerConfig{}, NewErr{
-			Code:    ErrConfigBadStructure,
+			Code:    ErrConfigLoadStructure,
 			value:   "listen",
-			deepErr: fmt.Errorf("wrong type of %T", c["listen"]),
+			deepErr: fmt.Errorf("wrong type of %T - %#v", untypedListens, untypedListens),
 		}
 	}
 
@@ -233,7 +272,7 @@ func loadConfig(pConfig *map[string]interface{}) (
 
 	if dirtyHandlers, ok = c["handler"].([]interface{}); !ok {
 		return []string{}, []HandlerConfig{}, NewErr{
-			Code:    ErrConfigBadStructure,
+			Code:    ErrConfigLoadStructure,
 			value:   "handler",
 			deepErr: fmt.Errorf("wrong type of %T", c["listen"]),
 		}
@@ -259,16 +298,16 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 
 	if addressed, ok = dirtyHandler.(map[string]interface{}); !ok {
 		return HandlerConfig{}, NewErr{
-			Code:    ErrConfigBadStructure,
-			value:   fmt.Sprintf("%#v", dirtyHandler),
-			deepErr: fmt.Errorf("bad handler in config"),
+			Code:    ErrConfigLoadStructure,
+			value:   "handler",
+			deepErr: fmt.Errorf("bad handler in config - %#v", dirtyHandler),
 		}
 	}
 
 	if _, ok = addressed["handlerType"]; ok {
 		if h.handlerType, ok = addressed["handlerType"].(string); !ok {
 			return HandlerConfig{}, NewErr{
-				Code:  ErrConfigBadStructure,
+				Code:  ErrConfigLoadValue,
 				value: "handlerType",
 			}
 		}
@@ -276,7 +315,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 	if _, ok = addressed["handlerRoute"]; ok {
 		if h.handlerRoute, ok = addressed["handlerRoute"].(string); !ok {
 			return HandlerConfig{}, NewErr{
-				Code:  ErrConfigBadStructure,
+				Code:  ErrConfigLoadValue,
 				value: "handlerRoute",
 			}
 		}
@@ -285,7 +324,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 	if _, ok = addressed["baseURL"]; ok {
 		if h.baseURL, ok = addressed["baseURL"].(string); !ok {
 			return HandlerConfig{}, NewErr{
-				Code:  ErrConfigBadStructure,
+				Code:  ErrConfigLoadValue,
 				value: "baseURl",
 			}
 		}
@@ -293,7 +332,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 	if _, ok = addressed["confPath"]; ok {
 		if h.confPath, ok = addressed["confPath"].(string); !ok {
 			return HandlerConfig{}, NewErr{
-				Code:  ErrConfigBadStructure,
+				Code:  ErrConfigLoadValue,
 				value: "confPath",
 			}
 		}
@@ -301,7 +340,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 	if _, ok = addressed["confExt"]; ok {
 		if h.confExt, ok = addressed["confExt"].(string); !ok {
 			return HandlerConfig{}, NewErr{
-				Code:  ErrConfigBadStructure,
+				Code:  ErrConfigLoadValue,
 				value: "confExt",
 			}
 		}
@@ -310,7 +349,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 	if _, ok = addressed["exclude"]; ok {
 		if h.exclude, ok = addressed["exclude"].([]string); !ok {
 			return HandlerConfig{}, NewErr{
-				Code:  ErrConfigBadStructure,
+				Code:  ErrConfigLoadValue,
 				value: "exclude",
 			}
 		}
@@ -319,7 +358,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 	if _, ok = addressed["subdomainLen"]; ok {
 		if h.subdomainLen, ok = addressed["subdomainLen"].(int); !ok {
 			return HandlerConfig{}, NewErr{
-				Code:  ErrConfigBadStructure,
+				Code:  ErrConfigLoadValue,
 				value: "subdomainLen",
 			}
 		}
@@ -329,26 +368,35 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 	if _, ok = addressed["confFile"]; ok {
 		if workFile, ok := addressed["confFile"].(string); !ok {
 			return HandlerConfig{}, NewErr{
-				Code:  ErrConfigBadStructure,
-				value: "confFile",
+				Code:    ErrConfigLoadStructure,
+				value:   "confFile",
+				deepErr: fmt.Errorf("%#v", addressed["confFile"]),
 			}
-		} else {
+		} else if addressed["handlerType"] != "static" {
 			h.confTempl, err = template.ParseFiles(workFile)
 			if err != nil {
-				return HandlerConfig{}, UpgradeError(err)
+				return HandlerConfig{}, NewErr{
+					Code:    ErrConfigLoadTemplate,
+					value:   "confFile " + workFile,
+					deepErr: err,
+				}
 			}
 		}
 	}
 	if _, ok = addressed["resFile"]; ok {
 		if workFile, ok := addressed["resFile"].(string); !ok {
 			return HandlerConfig{}, NewErr{
-				Code:  ErrConfigBadStructure,
-				value: "resFile",
+				Code:  ErrConfigLoadStructure,
+				value: "resFile " + workFile,
 			}
 		} else if addressed["handlerType"] != "static" {
 			h.resTempl, err = template.ParseFiles(workFile)
 			if err != nil {
-				return HandlerConfig{}, UpgradeError(err)
+				return HandlerConfig{}, NewErr{
+					Code:    ErrConfigLoadTemplate,
+					value:   "resFile",
+					deepErr: err,
+				}
 			}
 		} else {
 			h.resFile = workFile

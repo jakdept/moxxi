@@ -1,14 +1,14 @@
 {
-  "Listen": ":8080",
-  "Handler": [
+  "listen": ["localhost:8080"],
+  "handler": [
     {
-      "HandlerType": "static",
-      "HandlerRoute": "/",
-      "resFile": "~/simple_form.html"
+      "handlerType": "static",
+      "handlerRoute": "/",
+      "resFile": "./simple_form.html"
     },
     {
-      "HandlerType": "form",
-      "HandlerRoute": "/submit",
+      "handlerType": "form",
+      "handlerRoute": "/submit",
       "baseURL": "parentdomain.com",
       "confPath": "~/vhosts.d",
       "confExt": ".conf",
@@ -17,13 +17,13 @@
         "backend",
         "secure"
       ],
-      "confFile": "~/config.template",
-      "resFile": "~/response.template",
+      "confFile": "./proxy.template",
+      "resFile": "./response.template",
       "subdomainLen": 8
     },
     {
-      "HandlerType": "json",
-      "HandlerRoute": "/json",
+      "handlerType": "json",
+      "handlerRoute": "/json",
       "baseURL": "parentdomain.com",
       "confPath": "~/vhosts.d",
       "confExt": ".conf",
@@ -32,8 +32,8 @@
         "backend",
         "secure"
       ],
-      "confFile": "~/config.template",
-      "resFile": "~/response.template",
+      "confFile": "./proxy.template",
+      "resFile": "./response.template",
       "subdomainLen": 8
     }
   ]

@@ -87,26 +87,36 @@ const (
 	ErrConfigBadRead
 	ErrConfigBadExtract
 	ErrConfigBadStructure
+	ErrConfigBadType
 	ErrConfigBadValue
 	ErrConfigBadTemplate
+	ErrConfigLoadStructure
+	ErrConfigLoadType
+	ErrConfigLoadValue
+	ErrConfigLoadTemplate
 )
 
 // specify the error message for each error
 var errMsg = map[int]string{
-	ErrUpgradedError:      "not actually an error message",
-	ErrCloseFile:          "failed to close the file [%s] - %v",
-	ErrRemoveFile:         "failed to remove file [%s] - %v",
-	ErrFilePerm:           "permission denied to create file [%s] - %v",
-	ErrFileUnexpect:       "unknown error with file [%s] - %v",
-	ErrBadHost:            "bad hostname provided [%s]",
-	ErrBadIP:              "bad IP provided [%s]",
-	ErrNoRandom:           "was not given a new random domain - shutting down",
-	ErrNoHostname:         "no provided hostname",
-	ErrNoIP:               "no provided IP",
-	ErrConfigBadHost:      "Bad hostname for handler [%s]",
-	ErrConfigBadRead:      "error reading config file - %v",
-	ErrConfigBadExtract:   "unable to decode %s portion of config - %v",
-	ErrConfigBadStructure: "bad config file - %s of wrong type - %v",
-	ErrConfigBadValue:     "bad config file - %s is incorrect - %v",
-	ErrConfigBadTemplate:  "bad template at %s - %v",
+	ErrUpgradedError:       "not actually an error message",
+	ErrCloseFile:           "failed to close the file [%s] - %v",
+	ErrRemoveFile:          "failed to remove file [%s] - %v",
+	ErrFilePerm:            "permission denied to create file [%s] - %v",
+	ErrFileUnexpect:        "unknown error with file [%s] - %v",
+	ErrBadHost:             "bad hostname provided [%s]",
+	ErrBadIP:               "bad IP provided [%s]",
+	ErrNoRandom:            "was not given a new random domain - shutting down",
+	ErrNoHostname:          "no provided hostname",
+	ErrNoIP:                "no provided IP",
+	ErrConfigBadHost:       "Bad hostname for handler [%s]",
+	ErrConfigBadRead:       "error reading config file %s - %v",
+	ErrConfigBadExtract:    "unable to decode %s portion of config - %v",
+	ErrConfigBadStructure:  "bad config file - %s of wrong structure - %v",
+	ErrConfigBadType:       "bad config file - %s of wrong type %v",
+	ErrConfigBadValue:      "bad config file - %s is incorrect - %v",
+	ErrConfigBadTemplate:   "bad template at %s - %v",
+	ErrConfigLoadStructure: "bad config load - %s of wrong structure - %v",
+	ErrConfigLoadType:      "bad config load - %s of wrong type - %v",
+	ErrConfigLoadValue:     "bad config load - %s is not present",
+	ErrConfigLoadTemplate:  "bad config load at %s - %v",
 }
