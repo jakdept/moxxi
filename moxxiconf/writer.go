@@ -35,7 +35,8 @@ func validHost(s string) string {
 	return strings.Join(parts, DomainSep)
 }
 
-func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, Err) {
+func confCheck(host, ip string, destTLS bool, port int,
+	blockedHeaders []string, ipList []net.IPNet) (siteParams, Err) {
 	var conf siteParams
 	if conf.IntHost = validHost(host); conf.IntHost == "" {
 		return siteParams{}, &NewErr{Code: ErrBadHost, value: host}
@@ -44,6 +45,9 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 	tempIP := net.ParseIP(ip)
 	if tempIP == nil {
 		return siteParams{}, &NewErr{Code: ErrBadIP, value: ip}
+	}
+	if !ipList.Contains(tempIP) {
+		return siteParams{}, &NewErr{Code: ErrBlockedIP, value: tempIP.String()}
 	}
 
 	conf.IntPort = 80

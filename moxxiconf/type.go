@@ -1,8 +1,10 @@
 package moxxiConf
 
 import (
+	"net"
 	"regexp"
 	"strings"
+	"text/scanner"
 	"text/template"
 	"time"
 )
@@ -50,6 +52,8 @@ type HandlerConfig struct {
 	confTempl    *template.Template
 	resFile      string
 	resTempl     *template.Template
+	ipFile       string
+	ipList       []net.IPNet
 	subdomainLen int
 }
 
@@ -79,4 +83,26 @@ func (f *HandlerLocFlag) Set(value string) error {
 
 func (f HandlerLocFlag) GetOne(i int) string {
 	return f[i]
+}
+
+func parseIPList(ipFile string) ([]net.IPNet, err) {
+	file, err := os.Open(ipFile)
+	if err != nil {
+		return NewErr{
+			Code:    ErrConfigBadIPFile,
+			value:   ipFile,
+			deepErr: err,
+		}
+	}
+
+	var s scanner.Scanner
+	var out []net.IPNet
+
+	s.Init(file)
+	for s.Scan() {
+		_, ipNet, err := net.ParseCIDR(s.TokenText())
+		if err == nil {
+			out = append(out, ipNet)
+		}
+	}
 }

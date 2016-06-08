@@ -80,6 +80,7 @@ const (
 	ErrFileUnexpect
 	ErrBadHost
 	ErrBadIP
+	ErrBlockedIP
 	ErrNoRandom
 	ErrNoHostname
 	ErrNoIP
@@ -94,6 +95,7 @@ const (
 	ErrConfigLoadType
 	ErrConfigLoadValue
 	ErrConfigLoadTemplate
+	ErrConfigBadIPFile
 )
 
 // specify the error message for each error
@@ -105,6 +107,7 @@ var errMsg = map[int]string{
 	ErrFileUnexpect:        "unknown error with file [%s] - %v",
 	ErrBadHost:             "bad hostname provided [%s]",
 	ErrBadIP:               "bad IP provided [%s]",
+	ErrBlockedIP:           "IP address provided - [%s] - was not allowed",
 	ErrNoRandom:            "was not given a new random domain - shutting down",
 	ErrNoHostname:          "no provided hostname",
 	ErrNoIP:                "no provided IP",
@@ -119,4 +122,5 @@ var errMsg = map[int]string{
 	ErrConfigLoadType:      "bad config load - %s of wrong type - %v",
 	ErrConfigLoadValue:     "bad config load - %s is not present",
 	ErrConfigLoadTemplate:  "bad config load at %s - %v",
+	ErrConfigBadIPFile:     "bad ip file - %s - %v",
 }
