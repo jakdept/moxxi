@@ -46,7 +46,7 @@ func confCheck(host, ip string, destTLS bool, port int,
 	if tempIP == nil {
 		return siteParams{}, &NewErr{Code: ErrBadIP, value: ip}
 	}
-	if !ipListContains(tempIP, ipList) {
+	if len(ipList) > 0 && !ipListContains(tempIP, ipList) {
 		return siteParams{}, &NewErr{Code: ErrBlockedIP, value: tempIP.String()}
 	}
 
