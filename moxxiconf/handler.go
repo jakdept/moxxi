@@ -102,7 +102,7 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 		var responseConfig []siteParams
 
 		for _, each := range v {
-			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, ipList)
+			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, config.ipList)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)
 				log.Println(err.LogError(r))

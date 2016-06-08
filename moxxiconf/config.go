@@ -413,7 +413,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 			}
 		} else if addressed["handlerType"] != "static" {
 			// #TODO# fix this call?
-			h.ipList, err = template.ParseFiles(workFile)
+			h.ipList, err = parseIPList(workFile)
 			if err != nil {
 				return HandlerConfig{}, NewErr{
 					Code:    ErrConfigLoadTemplate,
