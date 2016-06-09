@@ -20,6 +20,7 @@ func CreateMux(handlers []HandlerConfig) *http.ServeMux {
 			mux.HandleFunc(handler.handlerRoute, StaticHandler(handler))
 		}
 	}
+	log.Printf("%#v", mux)
 	return mux
 }
 
@@ -27,7 +28,6 @@ func CreateMux(handlers []HandlerConfig) *http.ServeMux {
 func FormHandler(config HandlerConfig) http.HandlerFunc {
 	confWriter := confWrite(config)
 
-	log.Printf("creating handler based on config\n%#v", config)
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		if extErr := r.ParseForm(); extErr != nil {
@@ -53,7 +53,7 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 
 		port, _ := strconv.Atoi(r.Form.Get("port"))
 		vhost, pkgErr := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
-			r.Form["header"])
+			r.Form["header"], config.ipList)
 		if pkgErr != nil {
 			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
 			log.Println(pkgErr.LogError(r))
@@ -80,7 +80,6 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 	confWriter := confWrite(config)
 
-	log.Printf("creating handler based on config\n%#v", config)
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// TODO move this stuff so it's declared once
@@ -102,7 +101,7 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 		var responseConfig []siteParams
 
 		for _, each := range v {
-			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders)
+			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, config.ipList)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)
 				log.Println(err.LogError(r))
@@ -129,7 +128,6 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 // StaticHandler - creates and returns a Handler to simply respond with a static response to every request
 func StaticHandler(config HandlerConfig) http.HandlerFunc {
-	log.Printf("creating handler based on config\n%#v", config)
 	res, err := ioutil.ReadFile(config.resFile)
 	if err != nil {
 		log.Printf("bad static response file %s - %v", config.resFile, err)

@@ -1,6 +1,7 @@
 package moxxiConf
 
 import (
+	"bufio"
 	"github.com/dchest/uniuri"
 	"net"
 	"os"
@@ -35,7 +36,8 @@ func validHost(s string) string {
 	return strings.Join(parts, DomainSep)
 }
 
-func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, Err) {
+func confCheck(host, ip string, destTLS bool, port int,
+	blockedHeaders []string, ipList []*net.IPNet) (siteParams, Err) {
 	var conf siteParams
 	if conf.IntHost = validHost(host); conf.IntHost == "" {
 		return siteParams{}, &NewErr{Code: ErrBadHost, value: host}
@@ -44,6 +46,9 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 	tempIP := net.ParseIP(ip)
 	if tempIP == nil {
 		return siteParams{}, &NewErr{Code: ErrBadIP, value: ip}
+	}
+	if len(ipList) > 0 && !ipListContains(tempIP, ipList) {
+		return siteParams{}, &NewErr{Code: ErrBlockedIP, value: tempIP.String()}
 	}
 
 	conf.IntPort = 80
@@ -125,6 +130,45 @@ func parseCheckbox(in string) bool {
 
 	for _, each := range checkedValues {
 		if each == in {
+			return true
+		}
+	}
+	return false
+}
+
+func parseIPList(ipFile string) ([]*net.IPNet, Err) {
+	file, err := os.Open(ipFile)
+	if err != nil {
+		return []*net.IPNet{}, NewErr{
+			Code:    ErrConfigBadIPFile,
+			value:   ipFile,
+			deepErr: err,
+		}
+	}
+
+	var out []*net.IPNet
+
+	s := bufio.NewScanner(file)
+
+	for s.Scan() {
+		t := strings.TrimSpace(s.Text())
+		switch {
+		case strings.HasPrefix(t, "//"):
+		case strings.HasPrefix(t, "#"):
+		case strings.HasPrefix(t, ";"):
+		default:
+			_, ipNet, err := net.ParseCIDR(s.Text())
+			if err == nil {
+				out = append(out, ipNet)
+			}
+		}
+	}
+	return out, nil
+}
+
+func ipListContains(address net.IP, list []*net.IPNet) bool {
+	for _, each := range list {
+		if each.Contains(address) {
 			return true
 		}
 	}

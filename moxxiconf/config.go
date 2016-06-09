@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"text/template"
 )
 
@@ -98,6 +99,7 @@ func validateConfig(dirtyConfig *map[string]interface{}) Err {
 		"confExt",
 		"confFile",
 		"resFile",
+		"ipFile",
 	} {
 		if _, ok := c[part]; ok {
 			if _, ok := c[part].(string); !ok {
@@ -163,6 +165,26 @@ func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
 		}
 	}
 
+	switch h["handlerType"] {
+	case "static":
+	case "form":
+	case "json":
+	default:
+		return NewErr{
+			Code:  ErrConfigBadStructure,
+			value: "handlerType",
+		}
+	}
+
+	if loc, ok := h["handlerRoute"].(string); !ok {
+		return NewErr{
+			Code:  ErrConfigBadStructure,
+			value: "handlerRoute",
+		}
+	} else if strings.HasSuffix(loc, "/") {
+		h["handlerRoute"] = loc + "/"
+	}
+
 	// check the exclude
 	if _, ok := h["exclude"]; ok {
 		// if it exists, make it an array
@@ -191,6 +213,7 @@ func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
 		"confExt",
 		"confFile",
 		"resFile",
+		"ipFile",
 	} {
 		if _, ok := h[part]; ok {
 			if _, ok := h[part].(string); !ok {
@@ -400,6 +423,26 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 			}
 		} else {
 			h.resFile = workFile
+		}
+	}
+
+	if _, ok = addressed["ipFile"]; ok {
+		if workFile, ok := addressed["ipFile"].(string); !ok {
+			return HandlerConfig{}, NewErr{
+				Code:  ErrConfigLoadStructure,
+				value: "ipFile " + workFile,
+			}
+		} else if addressed["ipFile"].(string) == "" {
+		} else if addressed["handlerType"] != "static" {
+			// #TODO# fix this call?
+			h.ipList, err = parseIPList(workFile)
+			if err != nil {
+				return HandlerConfig{}, NewErr{
+					Code:    ErrConfigLoadTemplate,
+					value:   "ipFile",
+					deepErr: err,
+				}
+			}
 		}
 	}
 

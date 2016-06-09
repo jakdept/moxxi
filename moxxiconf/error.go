@@ -8,6 +8,7 @@ import "net/http"
 type Err interface {
 	error
 	LogError(*http.Request) string
+	GetCode() int
 }
 
 // Err - the type used within my application for error handling
@@ -35,6 +36,10 @@ func (e NewErr) Error() string {
 	default:
 		return fmt.Sprintf(errMsg[e.Code], e.value, e.deepErr)
 	}
+}
+
+func (e NewErr) GetCode() int {
+	return e.Code
 }
 
 // the function `LogError` to print error log lines
@@ -80,6 +85,7 @@ const (
 	ErrFileUnexpect
 	ErrBadHost
 	ErrBadIP
+	ErrBlockedIP
 	ErrNoRandom
 	ErrNoHostname
 	ErrNoIP
@@ -94,6 +100,7 @@ const (
 	ErrConfigLoadType
 	ErrConfigLoadValue
 	ErrConfigLoadTemplate
+	ErrConfigBadIPFile
 )
 
 // specify the error message for each error
@@ -105,6 +112,7 @@ var errMsg = map[int]string{
 	ErrFileUnexpect:        "unknown error with file [%s] - %v",
 	ErrBadHost:             "bad hostname provided [%s]",
 	ErrBadIP:               "bad IP provided [%s]",
+	ErrBlockedIP:           "IP address provided - [%s] - was not allowed",
 	ErrNoRandom:            "was not given a new random domain - shutting down",
 	ErrNoHostname:          "no provided hostname",
 	ErrNoIP:                "no provided IP",
@@ -119,4 +127,5 @@ var errMsg = map[int]string{
 	ErrConfigLoadType:      "bad config load - %s of wrong type - %v",
 	ErrConfigLoadValue:     "bad config load - %s is not present",
 	ErrConfigLoadTemplate:  "bad config load at %s - %v",
+	ErrConfigBadIPFile:     "bad ip file - %s - %v",
 }

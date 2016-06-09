@@ -1,6 +1,7 @@
 package moxxiConf
 
 import (
+	"net"
 	"regexp"
 	"strings"
 	"text/template"
@@ -50,6 +51,8 @@ type HandlerConfig struct {
 	confTempl    *template.Template
 	resFile      string
 	resTempl     *template.Template
+	ipFile       string
+	ipList       []*net.IPNet
 	subdomainLen int
 }
 
