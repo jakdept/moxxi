@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"text/template"
 )
 
@@ -162,6 +163,26 @@ func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
 			Code:  ErrConfigBadStructure,
 			value: "handler",
 		}
+	}
+
+	switch h["handlerType"] {
+	case "static":
+	case "form":
+	case "json":
+	default:
+		return NewErr{
+			Code:  ErrConfigBadStructure,
+			value: "handlerType",
+		}
+	}
+
+	if loc, ok := h["handlerRoute"].(string); !ok {
+		return NewErr{
+			Code:  ErrConfigBadStructure,
+			value: "handlerRoute",
+		}
+	} else if strings.HasSuffix(loc, "/") {
+		h["handlerRoute"] = loc + "/"
 	}
 
 	// check the exclude

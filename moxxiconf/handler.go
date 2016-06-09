@@ -20,6 +20,7 @@ func CreateMux(handlers []HandlerConfig) *http.ServeMux {
 			mux.HandleFunc(handler.handlerRoute, StaticHandler(handler))
 		}
 	}
+	log.Printf("%#v", mux)
 	return mux
 }
 
