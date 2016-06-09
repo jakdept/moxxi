@@ -411,6 +411,7 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 				Code:  ErrConfigLoadStructure,
 				value: "ipFile " + workFile,
 			}
+		} else if addressed["ipFile"].(string) == "" {
 		} else if addressed["handlerType"] != "static" {
 			// #TODO# fix this call?
 			h.ipList, err = parseIPList(workFile)

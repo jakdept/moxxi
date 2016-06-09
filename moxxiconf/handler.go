@@ -27,7 +27,6 @@ func CreateMux(handlers []HandlerConfig) *http.ServeMux {
 func FormHandler(config HandlerConfig) http.HandlerFunc {
 	confWriter := confWrite(config)
 
-	log.Printf("creating handler based on config\n%#v", config)
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		if extErr := r.ParseForm(); extErr != nil {
@@ -80,7 +79,6 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 	confWriter := confWrite(config)
 
-	log.Printf("creating handler based on config\n%#v", config)
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// TODO move this stuff so it's declared once
@@ -129,7 +127,6 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 // StaticHandler - creates and returns a Handler to simply respond with a static response to every request
 func StaticHandler(config HandlerConfig) http.HandlerFunc {
-	log.Printf("creating handler based on config\n%#v", config)
 	res, err := ioutil.ReadFile(config.resFile)
 	if err != nil {
 		log.Printf("bad static response file %s - %v", config.resFile, err)

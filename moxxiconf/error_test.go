@@ -3,10 +3,10 @@ package moxxiConf
 import (
 	"errors"
 	"github.com/stretchr/testify/assert"
-	"testing"
 	"log"
 	"net/http"
 	"strings"
+	"testing"
 )
 
 func TestErr_Error(t *testing.T) {
@@ -89,8 +89,8 @@ func TestErr_Code(t *testing.T) {
 	assert.Equal(t, ErrFileUnexpect, err.GetCode(), "error codes should match")
 }
 
-func UpgradeError(t *testing.T) {
-	fakeError := errors.New("fake error")}
-	upErr := UpgradeError(fakeError)
-	assert.Equal(t, ErrUpgradedError, upErr.GetCode(), "mismatched errors")
+func TestUpgradeError(t *testing.T) {
+	fakeError := errors.New("fake error")
+	betterErr := UpgradeError(fakeError)
+	assert.Equal(t, ErrUpgradedError, betterErr.GetCode(), "mismatched errors")
 }
