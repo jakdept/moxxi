@@ -61,10 +61,6 @@ su -c "mkdir -p /home/moxxi/bin /home/moxxi/vhosts.d /home/moxxi" moxxi
 chgrp www-data /home/moxxi/vhosts.d
 ```
 
-```
-scp moxxi moxxi1:/home/moxxi/bin/moxxi
-```
-
 ### Nginx setup ###
 
 Remove some boilerplate nginx stuff:
@@ -77,7 +73,7 @@ mkdir -p /etc/nginx/sites.d
 
 Replace `/etc/nginx/nginx.conf` with the version in the repository.
 
-Copy, rename, and edit the following files into `/etc/nginx/sites-available`, then symlink then into `/etc/nginx/sites-enabled`:
+Copy, rename, and edit the following files into `/etc/nginx/sites.d`.
 
 * `moxxi.parentdomain.com.conf`
 * `parentdomain.com.conf`
@@ -86,13 +82,11 @@ Drop the following file into `/etc/nginx`:
 
 * `ssl.conf`
 
-You should also probably consider adding access control to the moxxi control vhost - otherwise someone could spam it and create domains. The following cover some different examples:
-
-* `ip_restriction.moxxi.parentdomain.com.conf`
+You should also probably consider adding access control to the moxxi control vhost - otherwise someone could spam it and create domains. You figure it out.
 
 ### Firewall setup ###
 
-```bash
+```
 cat <<EOM >/etc/network/if-pre-up.d/iptables
 #!/bin/sh
 /sbin/iptables-restore < /etc/iptables
@@ -120,6 +114,8 @@ Copy the following files to `/home/moxxi`
 
 * `proxy.template`
 * `response.template`
+
+Copy the [config](moxxi.config) file to `/etc/moxxi`. (this config can be JSON or YAML or lots of formats)
 
 Copy the unit file to `/etc/systemd/system/moxxi.service`.
 

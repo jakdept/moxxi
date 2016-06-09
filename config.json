@@ -1,0 +1,40 @@
+{
+  "listen": ["localhost:8080"],
+  "handler": [
+    {
+      "handlerType": "static",
+      "handlerRoute": "/",
+      "resFile": "./simple_form.html"
+    },
+    {
+      "handlerType": "form",
+      "handlerRoute": "/submit",
+      "baseURL": "parentdomain.com",
+      "confPath": "~/vhosts.d",
+      "confExt": ".conf",
+      "excludes": [
+        "moxxi",
+        "backend",
+        "secure"
+      ],
+      "confFile": "./proxy.template",
+      "resFile": "./response.template",
+      "subdomainLen": 8
+    },
+    {
+      "handlerType": "json",
+      "handlerRoute": "/json",
+      "baseURL": "parentdomain.com",
+      "confPath": "~/vhosts.d",
+      "confExt": ".conf",
+      "excludes": [
+        "moxxi",
+        "backend",
+        "secure"
+      ],
+      "confFile": "./proxy.template",
+      "resFile": "./response.template",
+      "subdomainLen": 8
+    }
+  ]
+}

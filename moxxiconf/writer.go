@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"text/template"
 )
 
 func inArr(a []string, t string) bool {
@@ -28,7 +27,7 @@ func validHost(s string) string {
 		case len(parts[i]) < 1:
 			parts = append(parts[:i], parts[i+1:]...)
 		case isNotAlphaNum.MatchString(parts[i]):
-			return "";
+			return ""
 		default:
 			i++
 		}
@@ -36,15 +35,15 @@ func validHost(s string) string {
 	return strings.Join(parts, DomainSep)
 }
 
-func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, error) {
+func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string) (siteParams, Err) {
 	var conf siteParams
 	if conf.IntHost = validHost(host); conf.IntHost == "" {
-		return siteParams{}, &Err{Code: ErrBadHost, value: host}
+		return siteParams{}, &NewErr{Code: ErrBadHost, value: host}
 	}
 
 	tempIP := net.ParseIP(ip)
 	if tempIP == nil {
-		return siteParams{}, &Err{Code: ErrBadIP, value: ip}
+		return siteParams{}, &NewErr{Code: ErrBadIP, value: ip}
 	}
 
 	conf.IntPort = 80
@@ -59,51 +58,58 @@ func confCheck(host, ip string, destTLS bool, port int, blockedHeaders []string)
 	return conf, nil
 }
 
-func confWrite(confPath, confExt, baseURL string, subdomainLen int, t template.Template,
-	excludes []string) func(siteParams) (siteParams, error) {
+func confWrite(config HandlerConfig) func(siteParams) (siteParams, Err) {
 
-	if subdomainLen < 1 {
-		subdomainLen = 1
-	}
-
-	return func(config siteParams) (siteParams, error) {
+	return func(siteConfig siteParams) (siteParams, Err) {
 
 		err := os.ErrExist
 		var randPart, fileName string
 		var f *os.File
 
-		for randPart == "" || os.IsExist(err) {
-			randPart = uniuri.NewLenChars(subdomainLen, SubdomainChars) + "." + baseURL
-			// pick again
-			if inArr(excludes, randPart) {
+		for os.IsExist(err) {
+			randPart = uniuri.NewLenChars(config.subdomainLen, SubdomainChars)
+			// pick again if you got something reserved
+			if inArr(config.exclude, randPart) {
 				continue
 			}
-			fileName = strings.TrimRight(confPath, PathSep) + PathSep
-			fileName += randPart + DomainSep + strings.TrimLeft(confExt, DomainSep)
+			if inArr(config.exclude, randPart+DomainSep+config.baseURL) {
+				continue
+			}
+			fileName = strings.Join([]string{
+				strings.TrimRight(config.confPath, PathSep),
+				PathSep,
+				randPart,
+				DomainSep,
+				config.baseURL,
+				DomainSep,
+				strings.TrimLeft(config.confExt, DomainSep)}, "")
 			f, err = os.Create(fileName)
 		}
 
-		config.ExtHost = randPart
+		siteConfig.ExtHost = strings.Join([]string{
+			randPart,
+			DomainSep,
+			config.baseURL}, "")
 
 		if err == os.ErrPermission {
-			return siteParams{ExtHost: randPart}, &Err{Code: ErrFilePerm, value: fileName, deepErr: err}
+			return siteParams{ExtHost: randPart}, &NewErr{Code: ErrFilePerm, value: fileName, deepErr: err}
 		} else if err != nil {
-			return siteParams{ExtHost: randPart}, &Err{Code: ErrFileUnexpect, value: fileName, deepErr: err}
+			return siteParams{ExtHost: randPart}, &NewErr{Code: ErrFileUnexpect, value: fileName, deepErr: err}
 		}
 
-		tErr := t.Execute(f, config)
+		tErr := config.confTempl.Execute(f, siteConfig)
 
 		if err = f.Close(); err != nil {
-			return siteParams{}, &Err{Code: ErrCloseFile, value: fileName, deepErr: err}
+			return siteParams{}, &NewErr{Code: ErrCloseFile, value: fileName, deepErr: err}
 		}
 
 		if tErr != nil {
 			if err = os.Remove(fileName); err != nil {
-				return siteParams{}, &Err{Code: ErrRemoveFile, value: fileName, deepErr: err}
+				return siteParams{}, &NewErr{Code: ErrRemoveFile, value: fileName, deepErr: err}
 			}
 		}
 
-		return config, nil
+		return siteConfig, nil
 	}
 }
 
@@ -122,5 +128,5 @@ func parseCheckbox(in string) bool {
 			return true
 		}
 	}
-	return false;
+	return false
 }

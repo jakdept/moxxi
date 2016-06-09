@@ -2,62 +2,73 @@ package moxxiConf
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
-	// "log"
 	"strconv"
-	"text/template"
 )
 
+func CreateMux(handlers []HandlerConfig) *http.ServeMux {
+	mux := http.NewServeMux()
+	for _, handler := range handlers {
+		switch handler.handlerType {
+		case "json":
+			mux.HandleFunc(handler.handlerRoute, JSONHandler(handler))
+		case "form":
+			mux.HandleFunc(handler.handlerRoute, FormHandler(handler))
+		case "static":
+			mux.HandleFunc(handler.handlerRoute, StaticHandler(handler))
+		}
+	}
+	return mux
+}
+
 // FormHandler - creates and returns a Handler for both Query and Form requests
-func FormHandler(baseURL, confPath, confExt string, excludes []string,
-	confTempl, resTempl template.Template, subdomainLen int) http.HandlerFunc {
+func FormHandler(config HandlerConfig) http.HandlerFunc {
+	confWriter := confWrite(config)
 
-	confWriter := confWrite(confPath, confExt, baseURL, subdomainLen, confTempl, excludes)
-
+	log.Printf("creating handler based on config\n%#v", config)
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		err := r.ParseForm()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if extErr := r.ParseForm(); extErr != nil {
+			http.Error(w, extErr.Error(), http.StatusBadRequest)
 			return
 		}
 
-		var tls bool
-
 		if r.Form.Get("host") == "" {
-			http.Error(w, "no provided hostname", http.StatusPreconditionFailed)
-			// TODO some log line?
+			pkgErr := &NewErr{Code: ErrNoHostname}
+			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 
 		if r.Form.Get("ip") == "" {
-			http.Error(w, "no provided ip", http.StatusPreconditionFailed)
-			// TODO some log line?
+			pkgErr := &NewErr{Code: ErrNoIP}
+			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 
-		if tls = parseCheckbox(r.Form.Get("tls")); err != nil {
-			tls = DefaultBackendTLS
-		}
+		tls := parseCheckbox(r.Form.Get("tls"))
 
 		port, _ := strconv.Atoi(r.Form.Get("port"))
-		config, err := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
+		vhost, pkgErr := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
 			r.Form["header"])
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusPreconditionFailed)
-			// TODO some log line?
+		if pkgErr != nil {
+			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 
-		if config, err = confWriter(config); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			// TODO some log line? or no?
+		if vhost, pkgErr = confWriter(vhost); pkgErr != nil {
+			http.Error(w, pkgErr.Error(), http.StatusInternalServerError)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 
-		if err = resTempl.Execute(w, []siteParams{config}); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			// TODO some long line? or no?
+		if extErr := config.resTempl.Execute(w, []siteParams{vhost}); extErr != nil {
+			http.Error(w, pkgErr.Error(), http.StatusInternalServerError)
+			log.Println(pkgErr.LogError(r))
 			return
 		}
 		return
@@ -65,13 +76,14 @@ func FormHandler(baseURL, confPath, confExt string, excludes []string,
 }
 
 // JSONHandler - creates and returns a Handler for JSON body requests
-func JSONHandler(baseURL, confPath, confExt string, excludes []string,
-	confTempl, resTempl template.Template, subdomainLen int) http.HandlerFunc {
+func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
-	confWriter := confWrite(confPath, confExt, baseURL, subdomainLen, confTempl, excludes)
+	confWriter := confWrite(config)
 
+	log.Printf("creating handler based on config\n%#v", config)
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		// TODO move this stuff so it's declared once
 		var v []struct {
 			host           string
 			ip             string
@@ -81,6 +93,7 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 		}
 
 		decoder := json.NewDecoder(r.Body)
+		// TODO this probably introduces a bug where only one json array is decoded
 		err := decoder.Decode(&v)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -89,25 +102,25 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 		var responseConfig []siteParams
 
 		for _, each := range v {
-			config, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders)
+			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)
-				// TODO some log line?
+				log.Println(err.LogError(r))
 				return
 			}
 
-			if config, err = confWriter(config); err != nil {
+			if confConfig, err = confWriter(confConfig); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
-				// TODO some log line? or no?
+				log.Println(err.LogError(r))
 				return
 			}
 
-			responseConfig = append(responseConfig, config)
+			responseConfig = append(responseConfig, confConfig)
 		}
 
-		if err = resTempl.Execute(w, responseConfig); err != nil {
+		if err = config.resTempl.Execute(w, responseConfig); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			// TODO some long line? or no?
+			log.Println(err.Error())
 			return
 		}
 		return
@@ -115,10 +128,15 @@ func JSONHandler(baseURL, confPath, confExt string, excludes []string,
 }
 
 // StaticHandler - creates and returns a Handler to simply respond with a static response to every request
-func StaticHandler(response []byte) http.HandlerFunc {
+func StaticHandler(config HandlerConfig) http.HandlerFunc {
+	log.Printf("creating handler based on config\n%#v", config)
+	res, err := ioutil.ReadFile(config.resFile)
+	if err != nil {
+		log.Printf("bad static response file %s - %v", config.resFile, err)
+	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write(response); err != nil {
+		if _, err := w.Write(res); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return

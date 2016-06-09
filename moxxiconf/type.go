@@ -1,10 +1,10 @@
 package moxxiConf
 
 import (
-	"fmt"
-	"strings"
-	"time"
 	"regexp"
+	"strings"
+	"text/template"
+	"time"
 )
 
 // PathSep is the path seperator used throughout this program
@@ -33,46 +33,28 @@ type siteParams struct {
 	StripHeaders []string
 }
 
-// Err - the type used within my application for error handling
-type Err struct {
-	Code    int
-	value   string
-	deepErr error
+var isNotAlphaNum *regexp.Regexp
+
+func init() {
+	isNotAlphaNum = regexp.MustCompile("[^a-zA-Z0-9]")
 }
 
-// the function `Error` to make my custom errors work
-func (e *Err) Error() string {
-	switch {
-	case e.deepErr == nil && e.value == "":
-		return errMsg[e.Code]
-	case e.deepErr == nil && e.value != "":
-		return fmt.Sprintf(errMsg[e.Code], e.value)
-	default:
-		return fmt.Sprintf(errMsg[e.Code], e.value, e.deepErr)
-	}
+type HandlerConfig struct {
+	handlerType  string
+	handlerRoute string
+	baseURL      string
+	confPath     string
+	confExt      string
+	exclude      []string
+	confFile     string
+	confTempl    *template.Template
+	resFile      string
+	resTempl     *template.Template
+	subdomainLen int
 }
 
-// assign a unique id to each error
-const (
-	ErrCloseFile = 1 << iota
-	ErrRemoveFile
-	ErrFilePerm
-	ErrFileUnexpect
-	ErrBadHost
-	ErrBadIP
-	ErrNoRandom
-)
-
-// specify the error message for each error
-var errMsg = map[int]string{
-	ErrCloseFile:    "failed to close the file [%s] - %v",
-	ErrRemoveFile:   "failed to remove file [%s] - %v",
-	ErrFilePerm:     "permission denied to create file [%s] - %v",
-	ErrFileUnexpect: "unknown error with file [%s] - %v",
-	ErrBadHost:      "bad hostname provided [%s]",
-	ErrBadIP:        "bad IP provided [%s]",
-	ErrNoRandom:     "was not given a new random domain - shutting down",
-}
+// everything below this line can likely go?
+// #TODO#
 
 // HandlerLocFlag gives a built in way to specify multiple locations to put the same handler
 type HandlerLocFlag []string
@@ -97,10 +79,4 @@ func (f *HandlerLocFlag) Set(value string) error {
 
 func (f HandlerLocFlag) GetOne(i int) string {
 	return f[i]
-}
-
-var isNotAlphaNum *regexp.Regexp
-
-func init() {
-	isNotAlphaNum = regexp.MustCompile("[^a-zA-Z0-9]")
 }
