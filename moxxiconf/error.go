@@ -8,6 +8,7 @@ import "net/http"
 type Err interface {
 	error
 	LogError(*http.Request) string
+	GetCode() int
 }
 
 // Err - the type used within my application for error handling
@@ -35,6 +36,10 @@ func (e NewErr) Error() string {
 	default:
 		return fmt.Sprintf(errMsg[e.Code], e.value, e.deepErr)
 	}
+}
+
+func (e NewErr) GetCode() int {
+	return e.Code
 }
 
 // the function `LogError` to print error log lines

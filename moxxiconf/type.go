@@ -1,9 +1,7 @@
 package moxxiConf
 
 import (
-	"bufio"
 	"net"
-	"os"
 	"regexp"
 	"strings"
 	"text/template"
@@ -58,15 +56,6 @@ type HandlerConfig struct {
 	subdomainLen int
 }
 
-func ipListContains(address net.IP, list []*net.IPNet) bool {
-	for _, each := range list {
-		if each.Contains(address) {
-			return true
-		}
-	}
-	return false
-}
-
 // everything below this line can likely go?
 // #TODO#
 
@@ -93,34 +82,4 @@ func (f *HandlerLocFlag) Set(value string) error {
 
 func (f HandlerLocFlag) GetOne(i int) string {
 	return f[i]
-}
-
-func parseIPList(ipFile string) ([]*net.IPNet, Err) {
-	file, err := os.Open(ipFile)
-	if err != nil {
-		return []*net.IPNet{}, NewErr{
-			Code:    ErrConfigBadIPFile,
-			value:   ipFile,
-			deepErr: err,
-		}
-	}
-
-	var out []*net.IPNet
-
-	s := bufio.NewScanner(file)
-
-	for s.Scan() {
-		t := strings.TrimSpace(s.Text())
-		switch {
-		case strings.HasPrefix(t, "//"):
-		case strings.HasPrefix(t, "#"):
-		case strings.HasPrefix(t, ";"):
-		default:
-			_, ipNet, err := net.ParseCIDR(s.Text())
-			if err == nil {
-				out = append(out, ipNet)
-			}
-		}
-	}
-	return out, nil
 }
