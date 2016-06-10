@@ -125,7 +125,41 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 		decoder := json.NewDecoder(r.Body)
 		// TODO this probably introduces a bug where only one json array is decoded
-		if multiTempl == false {
+		if multiTempl {
+			tStart.Execute(w, interface{})
+			for decoder.More() {
+				err := decoder.Decode(&v)
+				if err != nil {
+					continue
+				}
+
+				vhost := siteParams{
+					IntHost:      v.host,
+					IntIP:        v.ip,
+					Encrypted:    v.tls,
+					IntPort:      v.port,
+					StripHeaders: v.blockedHeaders,
+				}
+
+				confConfig, err := confCheck(vhost, config)
+				if err != nil {
+					tError.Execute(w, vhost)
+				}
+
+				if confConfig, err = confWriter(confConfig); err != nil {
+					tError.Execute(w, confConfig)
+				}
+
+				if err = tBody.Execute(w, confConfig); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					log.Println(err.Error())
+					return
+				}
+
+			}
+
+			tEnd.Execute(w, interface{})
+		} else {
 
 			err := decoder.Decode(&v)
 			if err != nil {
@@ -149,7 +183,7 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 				var responseConfig []siteParams
 
 				for _, each := range v {
-					confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, config.ipList)
+					confConfig, err := confCheck(vhost, config)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusPreconditionFailed)
 						log.Println(err.LogError(r))
