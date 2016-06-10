@@ -202,9 +202,9 @@ func redirectTrace(initURL string, initPort int) (string, int, Err) {
 	} else {
 		respHost = resp.Request.Host
 		if resp.TLS == nil {
-			respHost = 80
+			respPort = 80
 		} else {
-			respHost = 443
+			respPort = 443
 		}
 	}
 

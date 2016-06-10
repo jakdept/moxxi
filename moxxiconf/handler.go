@@ -41,6 +41,7 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 			log.Println(pkgErr.LogError(r))
 			return
 		}
+		host := r.Form.Get("host")
 
 		if r.Form.Get("ip") == "" {
 			pkgErr := &NewErr{Code: ErrNoIP}
@@ -57,14 +58,14 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 		}
 
 		if config.redirectTracing {
-			newHost, newPort, err := redirectTracing(host, port)
+			newHost, newPort, err := redirectTrace(host, port)
 			if err == nil {
 				host = newHost
 				port = newPort
 			}
 		}
 
-		vhost, pkgErr := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
+		vhost, pkgErr := confCheck(host, r.Form.Get("ip"), tls, port,
 			r.Form["header"], config.ipList)
 		if pkgErr != nil {
 			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
@@ -115,7 +116,7 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 		for _, each := range v {
 
 			if config.redirectTracing {
-				newHost, newPort, err := redirectTracing(host, port)
+				newHost, newPort, err := redirectTrace(each.host, each.port)
 				if err == nil {
 					each.host = newHost
 					each.port = newPort
