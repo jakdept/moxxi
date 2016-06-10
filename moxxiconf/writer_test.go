@@ -346,27 +346,37 @@ func TestParseIPList_BadFile(t *testing.T) {
 }
 
 func TestRedirectTrace(t *testing.T) {
-	var testData = struct {
+	var testData = []struct {
 		hostIn  string
 		portIn  int
 		hostOut string
 		portOut int
 	}{
 		{
-			"google.com",
-			80,
-			"www.google.com",
-			443,
+			hostIn:  "google.com",
+			portIn:  80,
+			hostOut: "www.google.com",
+			portOut: 80,
 		}, {
-			"github.com",
-			80,
-			"github.com",
-			443,
+			hostIn:  "github.com",
+			portIn:  80,
+			hostOut: "github.com",
+			portOut: 443,
 		}, {
-			"facebook.com",
-			80,
-			"www.facebook.com",
-			443,
+			hostIn:  "facebook.com",
+			portIn:  80,
+			hostOut: "www.facebook.com",
+			portOut: 443,
 		},
+	}
+
+	for id, test := range testData {
+		hostRes, portRes, err := redirectTrace(test.hostIn, test.portIn)
+		assert.Nil(t, err,
+			"test %d - got an error back that I should not have\n%v", id, err)
+		assert.Equal(t, test.hostOut, hostRes,
+			"test %d - got the wrong/unexpected host back", id)
+		assert.Equal(t, test.portOut, portRes,
+			"test %d - got the wrong/unexpected host back", id)
 	}
 }

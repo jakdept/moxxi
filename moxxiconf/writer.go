@@ -2,6 +2,7 @@ package moxxiConf
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/dchest/uniuri"
 	"net"
 	"net/http"
@@ -178,9 +179,8 @@ func ipListContains(address net.IP, list []*net.IPNet) bool {
 }
 
 func redirectTrace(initURL string, initPort int) (string, int, Err) {
-	c := &http.Client{}
-	resp, err := c.Get(initURL + strconv.Itoa(initPort))
-	if err == nil {
+	resp, err := http.Head(fmt.Sprintf("http://%s:%d/", initURL, initPort))
+	if err != nil {
 		return "", 0, NewErr{
 			Code:    ErrBadHostnameTrace,
 			value:   initURL,
@@ -191,8 +191,29 @@ func redirectTrace(initURL string, initPort int) (string, int, Err) {
 	var respHost string
 	var respPort int
 
-	if strings.Contains(resp.Request.Host, ":") {
-		parts := strings.Split(resp.Request.Host, ":")
+	if resp.Request == nil {
+		return "", 0, NewErr{
+			Code:    ErrBadHostnameTrace,
+			value:   initURL,
+			deepErr: fmt.Errorf("did not get a request back from %s", initURL),
+		}
+	}
+
+	var hostname string
+	if resp.Request.Host != "" {
+		hostname = resp.Request.Host
+	} else if resp.Request.URL != nil {
+		hostname = resp.Request.URL.Host
+	} else {
+		return "", 0, NewErr{
+			Code:    ErrBadHostnameTrace,
+			value:   initURL,
+			deepErr: fmt.Errorf("cound not find the URL"),
+		}
+	}
+
+	if strings.Contains(hostname, ":") {
+		parts := strings.Split(hostname, ":")
 		respPort, err = strconv.Atoi(parts[len(parts)-1])
 		if err != nil {
 			respHost = resp.Request.Host
@@ -200,7 +221,7 @@ func redirectTrace(initURL string, initPort int) (string, int, Err) {
 			respHost = strings.Join(parts[:len(parts)-1], ":")
 		}
 	} else {
-		respHost = resp.Request.Host
+		respHost = hostname
 		if resp.TLS == nil {
 			respPort = 80
 		} else {
