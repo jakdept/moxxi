@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"strings"
+	"net/http"
+	"strconv"
 )
 
 func inArr(a []string, t string) bool {
@@ -173,4 +175,33 @@ func ipListContains(address net.IP, list []*net.IPNet) bool {
 		}
 	}
 	return false
+}
+
+func redirectTrace(initURL string, initPort int) (string, int, Err) {
+	c := &http.Client{}
+	resp, err := c.Get(initURL + strconv.Itoa(initPort))
+	if err == nil {
+		return "", 0, NewErr{
+			Code:    ErrBadHostnameTrace,
+			value:   initURL,
+			deepErr: err,
+		}
+	}
+
+	var respHost string
+	var respPort int
+
+	if strings.Contains(resp.Request.Host, ":") {
+		parts := strings.Split(resp.Request.Host, ":")
+		respPort, err = strconv.Atoi(parts[len(parts)-1])
+		if err != nil {
+			respHost = resp.Request.Host
+		} else {
+			respHost = strings.Join(parts[:len(parts)-1], ":")
+		}
+	} else {
+		respHost = resp.Request.Host
+	}
+
+	return respHost, respPort, nil
 }
