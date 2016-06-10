@@ -246,7 +246,7 @@ func redirectTrace(initHost string, initPort int, initTLS bool) (string, int, bo
 		}
 	}
 	if resp.Request.TLS != nil {
-		respTLS = false
+		respTLS = true
 	}
 
 	return respHost, respPort, respTLS, nil

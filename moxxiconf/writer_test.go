@@ -349,32 +349,32 @@ func TestRedirectTrace(t *testing.T) {
 	var testData = []struct {
 		hostIn  string
 		portIn  int
-		tlsIn bool
+		tlsIn   bool
 		hostOut string
 		portOut int
-		tlsOut bool
+		tlsOut  bool
 	}{
 		{
 			hostIn:  "google.com",
 			portIn:  80,
-			tlsIn: false,
+			tlsIn:   false,
 			hostOut: "www.google.com",
 			portOut: 80,
-			tlsOut: false,
+			tlsOut:  false,
 		}, {
 			hostIn:  "github.com",
 			portIn:  80,
-			tlsIn: false,
+			tlsIn:   false,
 			hostOut: "github.com",
 			portOut: 443,
-			tlsOut: true,
+			tlsOut:  true,
 		}, {
 			hostIn:  "facebook.com",
 			portIn:  80,
-			tlsIn: false,
+			tlsIn:   false,
 			hostOut: "www.facebook.com",
 			portOut: 443,
-			tlsOut: true,
+			tlsOut:  true,
 		},
 	}
 
