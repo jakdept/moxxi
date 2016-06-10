@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"text/template"
 )
 
 func CreateMux(handlers []HandlerConfig) *http.ServeMux {
@@ -91,39 +92,61 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 			blockedHeaders []string
 		}
 
+		var tStart, tEnd, tBody, tError *template.Template
+		var multiTempl bool
+
+		if len(config.resTempl.Templates()) > 1 {
+			multiTempl = true
+			for _, each := range config.resTempl.Templates() {
+				switch each.Name() {
+				case "start":
+					tStart = each
+				case "end":
+					tEnd = each
+				case "body":
+					tBody = each
+				case "error":
+					tError = each
+				}
+			}
+		}
+
 		decoder := json.NewDecoder(r.Body)
 		// TODO this probably introduces a bug where only one json array is decoded
-		err := decoder.Decode(&v)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
+		if multiTempl == false {
 
-		var responseConfig []siteParams
-
-		for _, each := range v {
-			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, config.ipList)
+			err := decoder.Decode(&v)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusPreconditionFailed)
-				log.Println(err.LogError(r))
-				return
+				http.Error(w, err.Error(), http.StatusBadRequest)
 			}
 
-			if confConfig, err = confWriter(confConfig); err != nil {
+			var responseConfig []siteParams
+
+			for _, each := range v {
+				confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, config.ipList)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusPreconditionFailed)
+					log.Println(err.LogError(r))
+					return
+				}
+
+				if confConfig, err = confWriter(confConfig); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					log.Println(err.LogError(r))
+					return
+				}
+
+				responseConfig = append(responseConfig, confConfig)
+			}
+
+			if err = config.resTempl.Execute(w, responseConfig); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
-				log.Println(err.LogError(r))
+				log.Println(err.Error())
 				return
 			}
-
-			responseConfig = append(responseConfig, confConfig)
 		}
-
-		if err = config.resTempl.Execute(w, responseConfig); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Println(err.Error())
-			return
-		}
-		return
 	}
+	return
 }
 
 // StaticHandler - creates and returns a Handler to simply respond with a static response to every request
