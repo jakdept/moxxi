@@ -344,3 +344,29 @@ func TestParseIPList_BadFile(t *testing.T) {
 	_, locErr := parseIPList(fileName)
 	assert.Equal(t, ErrConfigBadIPFile, locErr.GetCode(), "got the wrong error type back")
 }
+
+func TestRedirectTrace(t *testing.T) {
+	var testData = struct {
+		hostIn  string
+		portIn  int
+		hostOut string
+		portOut int
+	}{
+		{
+			"google.com",
+			80,
+			"www.google.com",
+			443,
+		}, {
+			"github.com",
+			80,
+			"github.com",
+			443,
+		}, {
+			"facebook.com",
+			80,
+			"www.facebook.com",
+			443,
+		},
+	}
+}

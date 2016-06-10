@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"github.com/dchest/uniuri"
 	"net"
-	"os"
-	"strings"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 )
 
 func inArr(a []string, t string) bool {
@@ -201,6 +201,11 @@ func redirectTrace(initURL string, initPort int) (string, int, Err) {
 		}
 	} else {
 		respHost = resp.Request.Host
+		if resp.TLS == nil {
+			respHost = 80
+		} else {
+			respHost = 443
+		}
 	}
 
 	return respHost, respPort, nil

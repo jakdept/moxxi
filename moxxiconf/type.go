@@ -41,19 +41,20 @@ func init() {
 }
 
 type HandlerConfig struct {
-	handlerType  string
-	handlerRoute string
-	baseURL      string
-	confPath     string
-	confExt      string
-	exclude      []string
-	confFile     string
-	confTempl    *template.Template
-	resFile      string
-	resTempl     *template.Template
-	ipFile       string
-	ipList       []*net.IPNet
-	subdomainLen int
+	handlerType     string
+	handlerRoute    string
+	baseURL         string
+	confPath        string
+	confExt         string
+	redirectTracing bool
+	exclude         []string
+	confFile        string
+	confTempl       *template.Template
+	resFile         string
+	resTempl        *template.Template
+	ipFile          string
+	ipList          []*net.IPNet
+	subdomainLen    int
 }
 
 // everything below this line can likely go?

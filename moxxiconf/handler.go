@@ -51,7 +51,19 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 
 		tls := parseCheckbox(r.Form.Get("tls"))
 
-		port, _ := strconv.Atoi(r.Form.Get("port"))
+		port, err := strconv.Atoi(r.Form.Get("port"))
+		if err != nil {
+			port = 80
+		}
+
+		if config.redirectTracing {
+			newHost, newPort, err := redirectTracing(host, port)
+			if err == nil {
+				host = newHost
+				port = newPort
+			}
+		}
+
 		vhost, pkgErr := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
 			r.Form["header"], config.ipList)
 		if pkgErr != nil {
@@ -101,6 +113,15 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 		var responseConfig []siteParams
 
 		for _, each := range v {
+
+			if config.redirectTracing {
+				newHost, newPort, err := redirectTracing(host, port)
+				if err == nil {
+					each.host = newHost
+					each.port = newPort
+				}
+			}
+
 			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, config.ipList)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)
