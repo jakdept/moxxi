@@ -178,8 +178,16 @@ func ipListContains(address net.IP, list []*net.IPNet) bool {
 	return false
 }
 
-func redirectTrace(initURL string, initPort int) (string, int, Err) {
-	resp, err := http.Head(fmt.Sprintf("http://%s:%d/", initURL, initPort))
+func redirectTrace(initHost string, initPort int) (string, int, Err) {
+
+	var initURL string
+	if initPort == 443 {
+		initURL = (fmt.Sprintf("https://%s:%d/", initHost, initPort))
+	} else {
+		initURL = (fmt.Sprintf("http://%s:%d/", initHost, initPort))
+	}
+
+	resp, err := http.Head(initURL)
 	if err != nil {
 		return "", 0, NewErr{
 			Code:    ErrBadHostnameTrace,
