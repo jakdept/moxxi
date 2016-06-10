@@ -93,40 +93,34 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 	confWriter := confWrite(config)
 
-	return func(w http.ResponseWriter, r *http.Request) {
+	var tStart, tEnd, tBody, tError *template.Template
+	var multiTempl bool
 
-		// TODO move this stuff so it's declared once
-		var v []struct {
-			host           string
-			ip             string
-			port           int
-			tls            bool
-			blockedHeaders []string
-		}
-
-		var tStart, tEnd, tBody, tError *template.Template
-		var multiTempl bool
-
-		if len(config.resTempl.Templates()) > 1 {
-			multiTempl = true
-			for _, each := range config.resTempl.Templates() {
-				switch each.Name() {
-				case "start":
-					tStart = each
-				case "end":
-					tEnd = each
-				case "body":
-					tBody = each
-				case "error":
-					tError = each
-				}
+	if len(config.resTempl.Templates()) > 1 {
+		multiTempl = true
+		for _, each := range config.resTempl.Templates() {
+			switch each.Name() {
+			case "start":
+				tStart = each
+			case "end":
+				tEnd = each
+			case "body":
+				tBody = each
+			case "error":
+				tError = each
 			}
 		}
-
-		decoder := json.NewDecoder(r.Body)
-		// TODO this probably introduces a bug where only one json array is decoded
-		if multiTempl {
-			tStart.Execute(w, interface{})
+		return func(w http.ResponseWriter, r *http.Request) {
+			var v struct {
+				host           string
+				ip             string
+				port           int
+				tls            bool
+				blockedHeaders []string
+			}
+			decoder := json.NewDecoder(r.Body)
+			var emptyInterface interface{}
+			tStart.Execute(w, emptyInterface)
 			for decoder.More() {
 				err := decoder.Decode(&v)
 				if err != nil {
@@ -146,8 +140,28 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 					tError.Execute(w, vhost)
 				}
 
-				if confConfig, err = confWriter(confConfig); err != nil {
-					tError.Execute(w, confConfig)
+				if confConfig, err := confWriter(confConfig); err != nil {
+					log.Println(err.LogError(r))
+					erredConfig := struct {
+						ExtHost      string
+						IntHost      string
+						IntIP        string
+						IntPort      int
+						Encrypted    bool
+						StripHeaders []string
+						myError      string
+					}{
+						ExtHost:      confConfig.ExtHost,
+						IntHost:      confConfig.IntHost,
+						IntIP:        confConfig.IntIP,
+						IntPort:      confConfig.IntPort,
+						Encrypted:    confConfig.Encrypted,
+						StripHeaders: confConfig.StripHeaders,
+						myError:      err.Error(),
+					}
+					if err := tError.Execute(w, erredConfig); err != nil {
+						log.Println(err.Error())
+					}
 				}
 
 				if err = tBody.Execute(w, confConfig); err != nil {
@@ -155,12 +169,20 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 					log.Println(err.Error())
 					return
 				}
-
+			}
+			tEnd.Execute(w, emptyInterface)
+		}
+	} else {
+		return func(w http.ResponseWriter, r *http.Request) {
+			var v []struct {
+				host           string
+				ip             string
+				port           int
+				tls            bool
+				blockedHeaders []string
 			}
 
-			tEnd.Execute(w, interface{})
-		} else {
-
+			decoder := json.NewDecoder(r.Body)
 			err := decoder.Decode(&v)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -181,9 +203,10 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 				}
 
 				var responseConfig []siteParams
+				var err error
 
 				for _, each := range v {
-					confConfig, err := confCheck(vhost, config)
+					confConfig, err = confCheck(vhost, config)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusPreconditionFailed)
 						log.Println(err.LogError(r))
@@ -199,15 +222,15 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 					responseConfig = append(responseConfig, confConfig)
 				}
 
-				if err = config.resTempl.Execute(w, responseConfig); err != nil {
+				if err := config.resTempl.Execute(w, responseConfig); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					log.Println(err.Error())
 					return
 				}
 			}
+			return
 		}
 	}
-	return
 }
 
 // StaticHandler - creates and returns a Handler to simply respond with a static response to every request
