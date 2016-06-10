@@ -57,16 +57,15 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 			port = 80
 		}
 
-		if config.redirectTracing {
-			newHost, newPort, err := redirectTrace(host, port)
-			if err == nil {
-				host = newHost
-				port = newPort
-			}
+		vhost := siteParams{
+			IntHost:      host,
+			IntIP:        r.Form.Get("ip"),
+			Encrypted:    tls,
+			IntPort:      port,
+			StripHeaders: r.Form["header"],
 		}
 
-		vhost, pkgErr := confCheck(host, r.Form.Get("ip"), tls, port,
-			r.Form["header"], config.ipList)
+		vhost, pkgErr := confCheck(vhost, config)
 		if pkgErr != nil {
 			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
 			log.Println(pkgErr.LogError(r))
@@ -115,15 +114,15 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 		for _, each := range v {
 
-			if config.redirectTracing {
-				newHost, newPort, err := redirectTrace(each.host, each.port)
-				if err == nil {
-					each.host = newHost
-					each.port = newPort
-				}
+			vhost := siteParams{
+				IntHost:      each.host,
+				IntIP:        each.ip,
+				Encrypted:    each.tls,
+				IntPort:      each.port,
+				StripHeaders: each.blockedHeaders,
 			}
 
-			confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, config.ipList)
+			confConfig, err := confCheck(vhost, config)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)
 				log.Println(err.LogError(r))

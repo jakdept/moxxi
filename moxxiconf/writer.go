@@ -39,29 +39,37 @@ func validHost(s string) string {
 	return strings.Join(parts, DomainSep)
 }
 
-func confCheck(host, ip string, destTLS bool, port int,
-	blockedHeaders []string, ipList []*net.IPNet) (siteParams, Err) {
+func confCheck(proxy siteParams, config HandlerConfig) (siteParams, Err) {
 	var conf siteParams
-	if conf.IntHost = validHost(host); conf.IntHost == "" {
-		return siteParams{}, &NewErr{Code: ErrBadHost, value: host}
+	if conf.IntHost = validHost(proxy.IntHost); conf.IntHost == "" {
+		return siteParams{}, &NewErr{Code: ErrBadHost, value: proxy.IntHost}
 	}
 
-	tempIP := net.ParseIP(ip)
+	tempIP := net.ParseIP(proxy.IntIP)
 	if tempIP == nil {
-		return siteParams{}, &NewErr{Code: ErrBadIP, value: ip}
+		return siteParams{}, &NewErr{Code: ErrBadIP, value: proxy.IntIP}
 	}
-	if len(ipList) > 0 && !ipListContains(tempIP, ipList) {
+	if len(config.ipList) > 0 && !ipListContains(tempIP, config.ipList) {
 		return siteParams{}, &NewErr{Code: ErrBlockedIP, value: tempIP.String()}
 	}
 
 	conf.IntPort = 80
-	if port > 0 && port < MaxAllowedPort {
-		conf.IntPort = port
+	if proxy.IntPort > 0 && proxy.IntPort < MaxAllowedPort {
+		conf.IntPort = proxy.IntPort
 	}
 
 	conf.IntIP = tempIP.String()
-	conf.Encrypted = destTLS
-	conf.StripHeaders = blockedHeaders
+	conf.Encrypted = proxy.Encrypted
+	conf.StripHeaders = proxy.StripHeaders
+
+	if config.redirectTracing {
+		newIntHost, newIntPort, newEncrypted, err := redirectTrace(conf.IntHost, conf.IntPort, conf.Encrypted)
+		if err == nil {
+			conf.IntHost = newIntHost
+			conf.IntPort = newIntPort
+			conf.Encrypted = newEncrypted
+		}
+	}
 
 	return conf, nil
 }
@@ -178,10 +186,10 @@ func ipListContains(address net.IP, list []*net.IPNet) bool {
 	return false
 }
 
-func redirectTrace(initHost string, initPort int) (string, int, Err) {
+func redirectTrace(initHost string, initPort int, initTLS bool) (string, int, bool, Err) {
 
 	var initURL string
-	if initPort == 443 {
+	if initTLS {
 		initURL = (fmt.Sprintf("https://%s:%d/", initHost, initPort))
 	} else {
 		initURL = (fmt.Sprintf("http://%s:%d/", initHost, initPort))
@@ -189,7 +197,7 @@ func redirectTrace(initHost string, initPort int) (string, int, Err) {
 
 	resp, err := http.Head(initURL)
 	if err != nil {
-		return "", 0, NewErr{
+		return "", 0, false, NewErr{
 			Code:    ErrBadHostnameTrace,
 			value:   initURL,
 			deepErr: err,
@@ -198,9 +206,10 @@ func redirectTrace(initHost string, initPort int) (string, int, Err) {
 
 	var respHost string
 	var respPort int
+	var respTLS bool
 
 	if resp.Request == nil {
-		return "", 0, NewErr{
+		return "", 0, false, NewErr{
 			Code:    ErrBadHostnameTrace,
 			value:   initURL,
 			deepErr: fmt.Errorf("did not get a request back from %s", initURL),
@@ -213,7 +222,7 @@ func redirectTrace(initHost string, initPort int) (string, int, Err) {
 	} else if resp.Request.URL != nil {
 		hostname = resp.Request.URL.Host
 	} else {
-		return "", 0, NewErr{
+		return "", 0, false, NewErr{
 			Code:    ErrBadHostnameTrace,
 			value:   initURL,
 			deepErr: fmt.Errorf("cound not find the URL"),
@@ -236,6 +245,9 @@ func redirectTrace(initHost string, initPort int) (string, int, Err) {
 			respPort = 443
 		}
 	}
+	if resp.Request.TLS != nil {
+		respTLS = false
+	}
 
-	return respHost, respPort, nil
+	return respHost, respPort, respTLS, nil
 }

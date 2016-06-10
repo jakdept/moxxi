@@ -122,8 +122,8 @@ func TestConfCheck(t *testing.T) {
 	}
 
 	for _, test := range testData {
-		eachOut, eachErr := confCheck(test.host, test.ip, test.destTLS,
-			test.port, test.blockedHeaders, []*net.IPNet{})
+		vhostConf := siteParams{IntHost: test.host, IntPort: test.port, Encrypted: test.destTLS, IntIP: test.ip, StripHeaders: test.blockedHeaders}
+		eachOut, eachErr := confCheck(vhostConf, HandlerConfig{})
 		assert.Equal(t, test.exp, eachOut, "expected return and actual did not match")
 		assert.Equal(t, test.expErr, eachErr, "expected return and actual did not match")
 	}
@@ -349,34 +349,44 @@ func TestRedirectTrace(t *testing.T) {
 	var testData = []struct {
 		hostIn  string
 		portIn  int
+		tlsIn bool
 		hostOut string
 		portOut int
+		tlsOut bool
 	}{
 		{
 			hostIn:  "google.com",
 			portIn:  80,
+			tlsIn: false,
 			hostOut: "www.google.com",
 			portOut: 80,
+			tlsOut: false,
 		}, {
 			hostIn:  "github.com",
 			portIn:  80,
+			tlsIn: false,
 			hostOut: "github.com",
 			portOut: 443,
+			tlsOut: true,
 		}, {
 			hostIn:  "facebook.com",
 			portIn:  80,
+			tlsIn: false,
 			hostOut: "www.facebook.com",
 			portOut: 443,
+			tlsOut: true,
 		},
 	}
 
 	for id, test := range testData {
-		hostRes, portRes, err := redirectTrace(test.hostIn, test.portIn)
+		hostRes, portRes, tlsRes, err := redirectTrace(test.hostIn, test.portIn, test.tlsIn)
 		assert.Nil(t, err,
 			"test %d - got an error back that I should not have\n%v", id, err)
 		assert.Equal(t, test.hostOut, hostRes,
 			"test %d - got the wrong/unexpected host back", id)
 		assert.Equal(t, test.portOut, portRes,
-			"test %d - got the wrong/unexpected host back", id)
+			"test %d - got the wrong/unexpected port back", id)
+		assert.Equal(t, test.tlsOut, tlsRes,
+			"test %d - got the wrong/unexpected encryption back", id)
 	}
 }
