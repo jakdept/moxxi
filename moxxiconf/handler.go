@@ -42,6 +42,7 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 			log.Println(pkgErr.LogError(r))
 			return
 		}
+		host := r.Form.Get("host")
 
 		if r.Form.Get("ip") == "" {
 			pkgErr := &NewErr{Code: ErrNoIP}
@@ -52,9 +53,20 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 
 		tls := parseCheckbox(r.Form.Get("tls"))
 
-		port, _ := strconv.Atoi(r.Form.Get("port"))
-		vhost, pkgErr := confCheck(r.Form.Get("host"), r.Form.Get("ip"), tls, port,
-			r.Form["header"], config.ipList)
+		port, err := strconv.Atoi(r.Form.Get("port"))
+		if err != nil {
+			port = 80
+		}
+
+		vhost := siteParams{
+			IntHost:      host,
+			IntIP:        r.Form.Get("ip"),
+			Encrypted:    tls,
+			IntPort:      port,
+			StripHeaders: r.Form["header"],
+		}
+
+		vhost, pkgErr := confCheck(vhost, config)
 		if pkgErr != nil {
 			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
 			log.Println(pkgErr.LogError(r))
@@ -119,30 +131,45 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 			}
-
-			var responseConfig []siteParams
-
 			for _, each := range v {
-				confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, config.ipList)
+
+				vhost := siteParams{
+					IntHost:      each.host,
+					IntIP:        each.ip,
+					Encrypted:    each.tls,
+					IntPort:      each.port,
+					StripHeaders: each.blockedHeaders,
+				}
+
+				confConfig, err := confCheck(vhost, config)
 				if err != nil {
-					http.Error(w, err.Error(), http.StatusPreconditionFailed)
-					log.Println(err.LogError(r))
-					return
+					http.Error(w, err.Error(), http.StatusBadRequest)
 				}
 
-				if confConfig, err = confWriter(confConfig); err != nil {
+				var responseConfig []siteParams
+
+				for _, each := range v {
+					confConfig, err := confCheck(each.host, each.ip, each.tls, each.port, each.blockedHeaders, config.ipList)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusPreconditionFailed)
+						log.Println(err.LogError(r))
+						return
+					}
+
+					if confConfig, err = confWriter(confConfig); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						log.Println(err.LogError(r))
+						return
+					}
+
+					responseConfig = append(responseConfig, confConfig)
+				}
+
+				if err = config.resTempl.Execute(w, responseConfig); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
-					log.Println(err.LogError(r))
+					log.Println(err.Error())
 					return
 				}
-
-				responseConfig = append(responseConfig, confConfig)
-			}
-
-			if err = config.resTempl.Execute(w, responseConfig); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				log.Println(err.Error())
-				return
 			}
 		}
 	}
