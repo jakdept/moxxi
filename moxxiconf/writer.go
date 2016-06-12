@@ -189,9 +189,14 @@ func ipListContains(address net.IP, list []*net.IPNet) bool {
 func redirectTrace(initHost string, initPort int, initTLS bool) (string, int, bool, Err) {
 
 	var initURL string
-	if initTLS {
+	switch {
+	case initTLS && initPort == 443:
+		initURL = (fmt.Sprintf("https://%s/", initHost))
+	case initTLS && initPort != 443:
 		initURL = (fmt.Sprintf("https://%s:%d/", initHost, initPort))
-	} else {
+	case !initTLS && initPort == 80:
+		initURL = (fmt.Sprintf("http://%s/", initHost))
+	case !initTLS && initPort != 80:
 		initURL = (fmt.Sprintf("http://%s:%d/", initHost, initPort))
 	}
 
@@ -245,7 +250,7 @@ func redirectTrace(initHost string, initPort int, initTLS bool) (string, int, bo
 			respPort = 443
 		}
 	}
-	if resp.Request.TLS != nil {
+	if resp.TLS != nil {
 		respTLS = true
 	}
 
