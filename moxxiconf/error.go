@@ -101,6 +101,7 @@ const (
 	ErrConfigLoadValue
 	ErrConfigLoadTemplate
 	ErrConfigBadIPFile
+	ErrBadHostnameTrace
 )
 
 // specify the error message for each error
@@ -128,4 +129,5 @@ var errMsg = map[int]string{
 	ErrConfigLoadValue:     "bad config load - %s is not present",
 	ErrConfigLoadTemplate:  "bad config load at %s - %v",
 	ErrConfigBadIPFile:     "bad ip file - %s - %v",
+	ErrBadHostnameTrace:    "unable to trace out domain %s - %v",
 }

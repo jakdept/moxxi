@@ -122,6 +122,16 @@ func validateConfig(dirtyConfig *map[string]interface{}) Err {
 		}
 	}
 
+	if _, ok := c["redirectTracing"]; ok {
+		if _, ok = c["redirectTracing"].(bool); !ok {
+			return NewErr{
+				Code:    ErrConfigBadStructure,
+				value:   "redirectTracing",
+				deepErr: fmt.Errorf("%T - %#v", c["redirectTracing"], c["redirectTracing"]),
+			}
+		}
+	}
+
 	// verify the handlers are an array
 	handlers, ok := c["handler"].([]interface{})
 	if !ok {
@@ -256,6 +266,20 @@ func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
 		}
 	}
 
+	if _, ok = h["redirectTracing"]; ok {
+		if _, ok = h["redirectTracing"].(bool); !ok {
+			return NewErr{
+				Code:    ErrConfigBadStructure,
+				value:   "redirectTracing",
+				deepErr: fmt.Errorf("%T - %#v", c["redirectTracing"], c["redirectTracing"]),
+			}
+		}
+	} else {
+		if _, ok := c["redirectTracing"]; ok {
+			h["redirectTracing"] = c["redirectTracing"]
+		}
+	}
+
 	// pack things back in
 	allHandlers[id] = h
 	c["handler"] = allHandlers
@@ -383,6 +407,15 @@ func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
 			return HandlerConfig{}, NewErr{
 				Code:  ErrConfigLoadValue,
 				value: "subdomainLen",
+			}
+		}
+	}
+
+	if _, ok = addressed["redirectTracing"]; ok {
+		if h.redirectTracing, ok = addressed["redirectTracing"].(bool); !ok {
+			return HandlerConfig{}, NewErr{
+				Code:  ErrConfigLoadValue,
+				value: "redirectTracing",
 			}
 		}
 	}

@@ -2,9 +2,12 @@ package moxxiConf
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/dchest/uniuri"
 	"net"
+	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -36,29 +39,37 @@ func validHost(s string) string {
 	return strings.Join(parts, DomainSep)
 }
 
-func confCheck(host, ip string, destTLS bool, port int,
-	blockedHeaders []string, ipList []*net.IPNet) (siteParams, Err) {
+func confCheck(proxy siteParams, config HandlerConfig) (siteParams, Err) {
 	var conf siteParams
-	if conf.IntHost = validHost(host); conf.IntHost == "" {
-		return siteParams{}, &NewErr{Code: ErrBadHost, value: host}
+	if conf.IntHost = validHost(proxy.IntHost); conf.IntHost == "" {
+		return siteParams{}, &NewErr{Code: ErrBadHost, value: proxy.IntHost}
 	}
 
-	tempIP := net.ParseIP(ip)
+	tempIP := net.ParseIP(proxy.IntIP)
 	if tempIP == nil {
-		return siteParams{}, &NewErr{Code: ErrBadIP, value: ip}
+		return siteParams{}, &NewErr{Code: ErrBadIP, value: proxy.IntIP}
 	}
-	if len(ipList) > 0 && !ipListContains(tempIP, ipList) {
+	if len(config.ipList) > 0 && !ipListContains(tempIP, config.ipList) {
 		return siteParams{}, &NewErr{Code: ErrBlockedIP, value: tempIP.String()}
 	}
 
 	conf.IntPort = 80
-	if port > 0 && port < MaxAllowedPort {
-		conf.IntPort = port
+	if proxy.IntPort > 0 && proxy.IntPort < MaxAllowedPort {
+		conf.IntPort = proxy.IntPort
 	}
 
 	conf.IntIP = tempIP.String()
-	conf.Encrypted = destTLS
-	conf.StripHeaders = blockedHeaders
+	conf.Encrypted = proxy.Encrypted
+	conf.StripHeaders = proxy.StripHeaders
+
+	if config.redirectTracing {
+		newIntHost, newIntPort, newEncrypted, err := redirectTrace(conf.IntHost, conf.IntPort, conf.Encrypted)
+		if err == nil {
+			conf.IntHost = newIntHost
+			conf.IntPort = newIntPort
+			conf.Encrypted = newEncrypted
+		}
+	}
 
 	return conf, nil
 }
@@ -173,4 +184,75 @@ func ipListContains(address net.IP, list []*net.IPNet) bool {
 		}
 	}
 	return false
+}
+
+func redirectTrace(initHost string, initPort int, initTLS bool) (string, int, bool, Err) {
+
+	var initURL string
+	switch {
+	case initTLS && initPort == 443:
+		initURL = (fmt.Sprintf("https://%s/", initHost))
+	case initTLS && initPort != 443:
+		initURL = (fmt.Sprintf("https://%s:%d/", initHost, initPort))
+	case !initTLS && initPort == 80:
+		initURL = (fmt.Sprintf("http://%s/", initHost))
+	case !initTLS && initPort != 80:
+		initURL = (fmt.Sprintf("http://%s:%d/", initHost, initPort))
+	}
+
+	resp, err := http.Head(initURL)
+	if err != nil {
+		return "", 0, false, NewErr{
+			Code:    ErrBadHostnameTrace,
+			value:   initURL,
+			deepErr: err,
+		}
+	}
+
+	var respHost string
+	var respPort int
+	var respTLS bool
+
+	if resp.Request == nil {
+		return "", 0, false, NewErr{
+			Code:    ErrBadHostnameTrace,
+			value:   initURL,
+			deepErr: fmt.Errorf("did not get a request back from %s", initURL),
+		}
+	}
+
+	var hostname string
+	if resp.Request.Host != "" {
+		hostname = resp.Request.Host
+	} else if resp.Request.URL != nil {
+		hostname = resp.Request.URL.Host
+	} else {
+		return "", 0, false, NewErr{
+			Code:    ErrBadHostnameTrace,
+			value:   initURL,
+			deepErr: fmt.Errorf("cound not find the URL"),
+		}
+	}
+
+	if strings.Contains(hostname, ":") {
+		parts := strings.Split(hostname, ":")
+		respPort, err = strconv.Atoi(parts[len(parts)-1])
+		if err != nil {
+			respHost = resp.Request.Host
+		} else {
+			respHost = strings.Join(parts[:len(parts)-1], ":")
+		}
+	} else {
+		respHost = hostname
+		if resp.TLS == nil {
+			respPort = 80
+		} else {
+			respPort = 443
+		}
+	}
+	if resp.TLS != nil {
+		respTLS = true
+	}
+
+	return respHost, respPort, respTLS, nil
 }
