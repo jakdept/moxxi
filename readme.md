@@ -15,36 +15,34 @@ JSON Format
 JSON requests should be laid out as follows - just included here:
 
 ```json
-[
-  {
-    "host": "hostname",
-    "ip": "serverIP",
-    "port": 443,
-    "tls": true,
-    "blockedHeaders": [
-      "X-Frame-Options",
-      "Accept-Encoding"
-    ]
-  },
-  {
-    "host": "hostbaitor.com",
-    "ip": "72.52.161.205",
-    "port": 80,
-    "tls": false,
-    "blockedHeaders": [
-      "X-Frame-Options",
-      "Accept-Encoding"
-    ]
-  },
-  {
-    "host": "deleteos.com",
-    "ip": "deleteos.com",
-    "port": 443,
-    "tls": true,
-    "blockedHeaders": [
-      "X-Frame-Options",
-      "Accept-Encoding"
-    ]
-  }
-]
+{
+  "host": "hostname",
+  "ip": "serverIP",
+  "port": 443,
+  "tls": true,
+  "blockedHeaders": [
+    "X-Frame-Options",
+    "Accept-Encoding"
+  ]
+},
+{
+  "host": "hostbaitor.com",
+  "ip": "72.52.161.205",
+  "port": 80,
+  "tls": false,
+  "blockedHeaders": [
+    "X-Frame-Options",
+    "Accept-Encoding"
+  ]
+},
+{
+  "host": "deleteos.com",
+  "ip": "deleteos.com",
+  "port": 443,
+  "tls": true,
+  "blockedHeaders": [
+    "X-Frame-Options",
+    "Accept-Encoding"
+  ]
+}
 ```

@@ -1,15 +1,22 @@
+{{- define tStart -}}
 <html>
 	<head>
 		<title>
 		</title>
 	</head>
 	<body>
-		{{ with . }}
 		<table>
-			{{ range . }}
+{{end}}
+
+{{ define tBody }}
+	{{ with . }}
 			<tr>
 				<td>
+				{{ if .Encrypted }} 
+					<a href="https://{{ .ExtHost }}">{{ .ExtHost }}</a>
+				{{ else }}
 					<a href="http://{{ .ExtHost }}">{{ .ExtHost }}</a>
+				{{ end }}
 				</td>
 				<td>
 					{{ .IntHost }}
@@ -27,15 +34,65 @@
 				{{ with .StripHeaders }}
 				<td>
 					{{ range .StripHeaders }}
-					<div class="killedHeader">
+					<div class="stripHeader">
 						{{ . }}
 					</div>
 					{{ end}}
 				</td>
 				{{ end }}
 			</tr>
-			{{ end }}
+	{{ end }}
+{{ end }}
+
+{{ define tEnd }}
 		</table>
-		{{ end }}
 	</body>
 </html>
+{{ end }}
+
+{{ define tError }}
+	{{ with . }}
+			<tr>
+				<td>
+					FAILURE
+				</td>
+				<td>
+					{{ .IntHost }}
+				</td>
+				<td>
+					{{ .IntIP }}
+				</td>
+				<td>
+					{{ if .Encrypted }}
+					Encryption enabled
+					{{ else }}
+					Encryption disabled
+					{{ end }}
+				</td>
+				{{ with .StripHeaders }}
+				<td>
+					{{ range . }}
+					<div class="stripHeader">
+						{{ . }}
+					</div>
+					{{ end}}
+				</td>
+				{{ end }}
+				{{ with .myError }}
+					{{ . }}
+				{{ end }}
+			</tr>
+	{{ end }}
+{{ end }}
+
+{{ define tAll }}
+	{{ template tStart}}
+	{{ with . }}
+		{{ range . }}
+			{{ template tBody }}
+		{{ end }}
+	{{ end }}
+	{{ template tEnd }}
+{{ end }}
+
+{{ template tAll }}

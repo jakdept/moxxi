@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"text/template"
 )
 
 func CreateMux(handlers []HandlerConfig) *http.ServeMux {
@@ -92,58 +93,143 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 
 	confWriter := confWrite(config)
 
-	return func(w http.ResponseWriter, r *http.Request) {
+	var tStart, tEnd, tBody, tError *template.Template
+	var multiTempl bool
 
-		// TODO move this stuff so it's declared once
-		var v []struct {
-			host           string
-			ip             string
-			port           int
-			tls            bool
-			blockedHeaders []string
+	if len(config.resTempl.Templates()) > 1 {
+		multiTempl = true
+		for _, each := range config.resTempl.Templates() {
+			switch each.Name() {
+			case "start":
+				tStart = each
+			case "end":
+				tEnd = each
+			case "body":
+				tBody = each
+			case "error":
+				tError = each
+			}
 		}
+		return func(w http.ResponseWriter, r *http.Request) {
+			var v struct {
+				host           string
+				ip             string
+				port           int
+				tls            bool
+				blockedHeaders []string
+			}
+			decoder := json.NewDecoder(r.Body)
+			var emptyInterface interface{}
+			tStart.Execute(w, emptyInterface)
+			for decoder.More() {
+				err := decoder.Decode(&v)
+				if err != nil {
+					continue
+				}
 
-		decoder := json.NewDecoder(r.Body)
-		// TODO this probably introduces a bug where only one json array is decoded
-		err := decoder.Decode(&v)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+				vhost := siteParams{
+					IntHost:      v.host,
+					IntIP:        v.ip,
+					Encrypted:    v.tls,
+					IntPort:      v.port,
+					StripHeaders: v.blockedHeaders,
+				}
+
+				confConfig, err := confCheck(vhost, config)
+				if err != nil {
+					tError.Execute(w, vhost)
+				}
+
+				if confConfig, err := confWriter(confConfig); err != nil {
+					log.Println(err.LogError(r))
+					erredConfig := struct {
+						ExtHost      string
+						IntHost      string
+						IntIP        string
+						IntPort      int
+						Encrypted    bool
+						StripHeaders []string
+						myError      string
+					}{
+						ExtHost:      confConfig.ExtHost,
+						IntHost:      confConfig.IntHost,
+						IntIP:        confConfig.IntIP,
+						IntPort:      confConfig.IntPort,
+						Encrypted:    confConfig.Encrypted,
+						StripHeaders: confConfig.StripHeaders,
+						myError:      err.Error(),
+					}
+					if err := tError.Execute(w, erredConfig); err != nil {
+						log.Println(err.Error())
+					}
+				}
+
+				if err = tBody.Execute(w, confConfig); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					log.Println(err.Error())
+					return
+				}
+			}
+			tEnd.Execute(w, emptyInterface)
 		}
-
-		var responseConfig []siteParams
-
-		for _, each := range v {
-
-			vhost := siteParams{
-				IntHost:      each.host,
-				IntIP:        each.ip,
-				Encrypted:    each.tls,
-				IntPort:      each.port,
-				StripHeaders: each.blockedHeaders,
+	} else {
+		return func(w http.ResponseWriter, r *http.Request) {
+			var v []struct {
+				host           string
+				ip             string
+				port           int
+				tls            bool
+				blockedHeaders []string
 			}
 
-			confConfig, err := confCheck(vhost, config)
+			decoder := json.NewDecoder(r.Body)
+			err := decoder.Decode(&v)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusPreconditionFailed)
-				log.Println(err.LogError(r))
-				return
+				http.Error(w, err.Error(), http.StatusBadRequest)
 			}
+			for _, each := range v {
 
-			if confConfig, err = confWriter(confConfig); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				log.Println(err.LogError(r))
-				return
+				vhost := siteParams{
+					IntHost:      each.host,
+					IntIP:        each.ip,
+					Encrypted:    each.tls,
+					IntPort:      each.port,
+					StripHeaders: each.blockedHeaders,
+				}
+
+				confConfig, err := confCheck(vhost, config)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+				}
+
+				var responseConfig []siteParams
+				var err error
+
+				for _, each := range v {
+					confConfig, err = confCheck(vhost, config)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusPreconditionFailed)
+						log.Println(err.LogError(r))
+						return
+					}
+
+					if confConfig, err = confWriter(confConfig); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						log.Println(err.LogError(r))
+						return
+					}
+
+					responseConfig = append(responseConfig, confConfig)
+				}
+
+				if err := config.resTempl.Execute(w, responseConfig); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					log.Println(err.Error())
+					return
+				}
 			}
-
-			responseConfig = append(responseConfig, confConfig)
-		}
-
-		if err = config.resTempl.Execute(w, responseConfig); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Println(err.Error())
 			return
 		}
-		return
 	}
 }
 
