@@ -2,8 +2,10 @@ package main
 
 import (
 	"github.com/JackKnifed/moxxi/moxxiconf"
+	gorillaHandlers "github.com/gorilla/handlers"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -19,7 +21,7 @@ func main() {
 	for _, singleListener := range listens {
 		srv := http.Server{
 			Addr:         singleListener,
-			Handler:      mux,
+			Handler:      gorillaHandlers.LoggingHandler(os.Stdout, mux),
 			ReadTimeout:  moxxiConf.ConnTimeout,
 			WriteTimeout: moxxiConf.ConnTimeout,
 		}

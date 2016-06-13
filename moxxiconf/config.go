@@ -181,7 +181,7 @@ func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
 			Code:  ErrConfigBadStructure,
 			value: "handlerRoute",
 		}
-	} else if strings.HasSuffix(loc, "/") {
+	} else if !strings.HasSuffix(loc, "/") {
 		h["handlerRoute"] = loc + "/"
 	}
 
