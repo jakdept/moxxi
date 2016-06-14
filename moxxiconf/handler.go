@@ -212,7 +212,6 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 			}
 
-
 			confConfig, err = confCheck(vhost, config)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusPreconditionFailed)

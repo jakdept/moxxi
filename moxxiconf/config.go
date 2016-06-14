@@ -109,15 +109,19 @@ func validateConfig(dirtyConfig *map[string]interface{}) Err {
 	}
 
 	if _, ok := c["subdomainLen"]; ok {
-		var subdomainLen int
-		if subdomainLen, ok = c["subdomainLen"].(int); !ok {
+		switch c["subdomainLen"].(type) {
+		case int:
+		case float64:
+			c["subdomainLen"] = int(c["subdomainLen"].(float64))
+		default:
 			return NewErr{
-				Code:    ErrConfigBadStructure,
-				value:   "subdomainLen",
-				deepErr: fmt.Errorf("%T - %#v", c["subdomainLen"], c["subdomainLen"]),
+				Code:  ErrConfigBadStructure,
+				value: "subdomainLen",
+				deepErr: fmt.Errorf("handler sub portion wrong type %T - %#v",
+					c["subdomainLen"], c["subdomainLen"]),
 			}
 		}
-		if subdomainLen < 8 {
+		if c["subdomainLen"].(int) < 8 {
 			c["subdomainLen"] = 8
 		}
 	}
