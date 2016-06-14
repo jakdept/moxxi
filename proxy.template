@@ -12,8 +12,8 @@ server {
 		# only filter html responses
 
 		# some proxy variables
-		proxy_buffers 16 4k;
-		proxy_buffer_size 2k;
+		proxy_buffers 16 768k;
+		proxy_buffer_size 96k;
 		proxy_set_header X-Real-IP $remote_addr;
 		proxy_set_header X-Real-Host $host;
 		{{ range .StripHeaders }}
