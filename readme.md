@@ -46,3 +46,9 @@ JSON requests should be laid out as follows - just included here:
   ]
 }
 ```
+
+You would then be expected to run them from CLI by putting that into a file, then running:
+
+```bash
+curl -d @inputFile -o outputFile moxxi.domain.com/appropiate/JSON/url
+```
