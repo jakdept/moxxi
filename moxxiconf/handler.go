@@ -14,7 +14,7 @@ func CreateMux(handlers []HandlerConfig) *http.ServeMux {
 	for _, handler := range handlers {
 		switch handler.handlerType {
 		case "json":
-			mux.HandleFunc(handler.handlerRoute, JSONHandler(handler))
+			mux.HandleFunc(handler.handlerRoute, ChunkedJSONHandler(handler))
 		case "form":
 			mux.HandleFunc(handler.handlerRoute, FormHandler(handler))
 		case "static":
@@ -89,145 +89,149 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 }
 
 // JSONHandler - creates and returns a Handler for JSON body requests
-func JSONHandler(config HandlerConfig) http.HandlerFunc {
+func ChunkedJSONHandler(config HandlerConfig) http.HandlerFunc {
+
+	var tStart, tEnd, tBody, tError *template.Template
+
+	for _, each := range config.resTempl.Templates() {
+		switch each.Name() {
+		case "start":
+			tStart = each
+		case "end":
+			tEnd = each
+		case "body":
+			tBody = each
+		case "error":
+			tError = each
+		}
+	}
+
+	if tStart == nil || tEnd == nil || tBody == nil || tError == nil {
+		return JSONHandler(config)
+	}
 
 	confWriter := confWrite(config)
 
-	var tStart, tEnd, tBody, tError *template.Template
-	var multiTempl bool
+	return func(w http.ResponseWriter, r *http.Request) {
 
-	if len(config.resTempl.Templates()) > 1 {
-		multiTempl = true
-		for _, each := range config.resTempl.Templates() {
-			switch each.Name() {
-			case "start":
-				tStart = each
-			case "end":
-				tEnd = each
-			case "body":
-				tBody = each
-			case "error":
-				tError = each
-			}
+		var emptyInterface interface{}
+		tStart.Execute(w, emptyInterface)
+
+		decoder := json.NewDecoder(r.Body)
+		var v struct {
+			host           string
+			ip             string
+			port           int
+			tls            bool
+			blockedHeaders []string
 		}
-		return func(w http.ResponseWriter, r *http.Request) {
-			var v struct {
-				host           string
-				ip             string
-				port           int
-				tls            bool
-				blockedHeaders []string
-			}
-			decoder := json.NewDecoder(r.Body)
-			var emptyInterface interface{}
-			tStart.Execute(w, emptyInterface)
-			for decoder.More() {
-				err := decoder.Decode(&v)
-				if err != nil {
-					continue
-				}
 
-				vhost := siteParams{
-					IntHost:      v.host,
-					IntIP:        v.ip,
-					Encrypted:    v.tls,
-					IntPort:      v.port,
-					StripHeaders: v.blockedHeaders,
-				}
-
-				confConfig, err := confCheck(vhost, config)
-				if err != nil {
-					tError.Execute(w, vhost)
-				}
-
-				if confConfig, err := confWriter(confConfig); err != nil {
-					log.Println(err.LogError(r))
-					erredConfig := struct {
-						ExtHost      string
-						IntHost      string
-						IntIP        string
-						IntPort      int
-						Encrypted    bool
-						StripHeaders []string
-						myError      string
-					}{
-						ExtHost:      confConfig.ExtHost,
-						IntHost:      confConfig.IntHost,
-						IntIP:        confConfig.IntIP,
-						IntPort:      confConfig.IntPort,
-						Encrypted:    confConfig.Encrypted,
-						StripHeaders: confConfig.StripHeaders,
-						myError:      err.Error(),
-					}
-					if err := tError.Execute(w, erredConfig); err != nil {
-						log.Println(err.Error())
-					}
-				}
-
-				if err = tBody.Execute(w, confConfig); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					log.Println(err.Error())
-					return
-				}
-			}
-			tEnd.Execute(w, emptyInterface)
-		}
-	} else {
-		return func(w http.ResponseWriter, r *http.Request) {
-			var v []struct {
-				host           string
-				ip             string
-				port           int
-				tls            bool
-				blockedHeaders []string
-			}
-
-			decoder := json.NewDecoder(r.Body)
+		for decoder.More() {
 			err := decoder.Decode(&v)
+			if err != nil {
+				continue
+			}
+
+			vhost := siteParams{
+				IntHost:      v.host,
+				IntIP:        v.ip,
+				Encrypted:    v.tls,
+				IntPort:      v.port,
+				StripHeaders: v.blockedHeaders,
+			}
+
+			confConfig, err := confCheck(vhost, config)
+			if err != nil {
+				tError.Execute(w, vhost)
+			}
+
+			// #TODO# maybe change the style of siteParams to include myError?
+			if confConfig, err := confWriter(confConfig); err != nil {
+				log.Println(err.LogError(r))
+				erredConfig := struct {
+					ExtHost      string
+					IntHost      string
+					IntIP        string
+					IntPort      int
+					Encrypted    bool
+					StripHeaders []string
+					myError      string
+				}{
+					ExtHost:      confConfig.ExtHost,
+					IntHost:      confConfig.IntHost,
+					IntIP:        confConfig.IntIP,
+					IntPort:      confConfig.IntPort,
+					Encrypted:    confConfig.Encrypted,
+					StripHeaders: confConfig.StripHeaders,
+					myError:      err.Error(),
+				}
+				if err := tError.Execute(w, erredConfig); err != nil {
+					log.Println(err.Error())
+				}
+			}
+
+			if err = tBody.Execute(w, confConfig); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				log.Println(err.Error())
+				return
+			}
+		}
+		tEnd.Execute(w, emptyInterface)
+	}
+}
+
+func JSONHandler(config HandlerConfig) http.HandlerFunc {
+	confWriter := confWrite(config)
+	return func(w http.ResponseWriter, r *http.Request) {
+		var v []struct {
+			host           string
+			ip             string
+			port           int
+			tls            bool
+			blockedHeaders []string
+		}
+		var responseConfig []siteParams
+
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&v)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		for _, each := range v {
+
+			vhost := siteParams{
+				IntHost:      each.host,
+				IntIP:        each.ip,
+				Encrypted:    each.tls,
+				IntPort:      each.port,
+				StripHeaders: each.blockedHeaders,
+			}
+
+			confConfig, err := confCheck(vhost, config)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 			}
-			for _, each := range v {
 
-				vhost := siteParams{
-					IntHost:      each.host,
-					IntIP:        each.ip,
-					Encrypted:    each.tls,
-					IntPort:      each.port,
-					StripHeaders: each.blockedHeaders,
-				}
 
-				confConfig, err := confCheck(vhost, config)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-				}
-
-				var responseConfig []siteParams
-				var err error
-
-				for _, each := range v {
-					confConfig, err = confCheck(vhost, config)
-					if err != nil {
-						http.Error(w, err.Error(), http.StatusPreconditionFailed)
-						log.Println(err.LogError(r))
-						return
-					}
-
-					if confConfig, err = confWriter(confConfig); err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						log.Println(err.LogError(r))
-						return
-					}
-
-					responseConfig = append(responseConfig, confConfig)
-				}
-
-				if err := config.resTempl.Execute(w, responseConfig); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					log.Println(err.Error())
-					return
-				}
+			confConfig, err = confCheck(vhost, config)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusPreconditionFailed)
+				log.Println(err.LogError(r))
+				return
 			}
+
+			if confConfig, err = confWriter(confConfig); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				log.Println(err.LogError(r))
+				return
+			}
+
+			responseConfig = append(responseConfig, confConfig)
+		}
+
+		if err := config.resTempl.Execute(w, responseConfig); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println(err.Error())
 			return
 		}
 	}
