@@ -86,13 +86,13 @@
 {{ end }}
 
 {{ define "tAll" }}
-	{{ template tStart}}
+	{{ template "tStart" }}
 	{{ with . }}
 		{{ range . }}
-			{{ template tBody }}
+			{{ template "tBody" . }}
 		{{ end }}
 	{{ end }}
-	{{ template tEnd }}
+	{{ template "tEnd" }}
 {{ end }}
 
 {{ template "tAll" . }}

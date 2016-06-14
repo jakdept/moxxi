@@ -18,7 +18,7 @@
     {
       "handlerType": "static",
       "handlerRoute": "/",
-      "resFile": "./simple_form.html"
+      "resFile": "/home/moxxi/simple_form.html"
     },
     {
       "handlerType": "form",
