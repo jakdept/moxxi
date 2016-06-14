@@ -3,13 +3,10 @@ server {
 	listen [::]:80;
 
 	server_name {{ .ExtHost }};
-	int_name {{ .IntHost }};
-	int_ip {{ .IntIP }};
-	int_port {{ .IntPort }};
 
 	location / {
 		# response modification
-		sub_filter $int_name $host;
+		sub_filter {{ .IntHost }} $host;
 		sub_filter_last_modified on;
 		sub_filter_once off;
 		# only filter html responses
@@ -25,9 +22,9 @@ server {
 
 		# external IP address to forward to
 		proxy_set_header Host {{ .IntHost }};
-		proxy_pass http://$int_ip:$int_port;
-		proxy_redirect http://$int_name/ http://$host/;
-		proxy_redirect http://$int_name:$int_port/ http://$host/;
+		proxy_pass http://{{ .IntIP }}:{{ .IntPort }};
+		proxy_redirect http://{{ .IntHost }}/ http://$host/;
+		proxy_redirect http://{{ .IntHost }}:{{ .IntPort }}/ http://$host/;
 	}
 }
 
@@ -37,13 +34,10 @@ server {
 	include ssl.conf;
 
 	server_name {{ .ExtHost }};
-	int_name {{ .IntHost }};
-	int_ip {{ .IntIP }};
-	int_port {{ .IntPort }};
 
 	location / {
 		# response modification
-		sub_filter $int_name $host;
+		sub_filter {{ .IntHost }} $host;
 		sub_filter_last_modified on;
 		sub_filter_once off;
 		# only filter html responses
@@ -58,9 +52,9 @@ server {
 		{{ end -}}
 
 		# external IP address to forward to
-		proxy_set_header Host $int_name;
-		proxy_pass https://$int_ip:$int_port;
-		proxy_redirect https://$int_name/ https://$host/;
-		proxy_redirect https://$int_name:$int_port/ https://$host/;
+		proxy_set_header Host {{ .IntHost }};
+		proxy_pass https://{{ .IntIP }}:{{ .IntPort }};
+		proxy_redirect https://{{ .IntHost }}/ https://$host/;
+		proxy_redirect https://{{ .IntHost }}:{{ .IntPort }}/ https://$host/;
 	}
 }
