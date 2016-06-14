@@ -1,6 +1,6 @@
 {
   "baseURL": "parentdomain.com",
-  "confPath": "~/vhosts.d",
+  "confPath": "/home/moxxi/vhosts.d",
   "confExt": ".conf",
   "excludes": [
     "moxxi",
@@ -8,8 +8,8 @@
     "secure",
     "status"
   ],
-  "confFile": "./proxy.template",
-  "resFile": "./response.template",
+  "confFile": "/home/moxxi/proxy.template",
+  "resFile": "/home/moxxi/response.template",
   "subdomainLen": 8,
   "listen": [
     "localhost:8080"
