@@ -27,7 +27,7 @@ go get github.com/JackKnifed/moxxi
 Run the tests:
 
 ```bash
-go test github.com/JackKnifed/moxxiconf
+go test github.com/JackKnifed/moxxi/...
 ```
 
 Build the binary (instructions are for a target Linux 64bit system):
@@ -36,7 +36,7 @@ Build the binary (instructions are for a target Linux 64bit system):
 GOARCH=amd64 GOOS=linux go install github.com/JackKnifed/moxxi
 ```
 
-Finally, copy that binary to `/usr/local/bin` on the target system. It should currently be at `$GOPATH/bin/moxxi`.
+Finally, copy that binary to `/usr/bin` on the target system. It should currently be at `$GOPATH/bin/moxxi`.
 
 Server Setup
 ------------
@@ -62,14 +62,6 @@ chgrp www-data /home/moxxi/vhosts.d
 ```
 
 ### Nginx setup ###
-
-Remove some boilerplate nginx stuff:
-
-```
-unlink /etc/nginx/sites-enabled/*
-rm -rf /etc/nginx/sites-enabled/ /etc/nginx/sites-available/
-mkdir -p /etc/nginx/sites.d
-```
 
 Replace `/etc/nginx/nginx.conf` with the version in the repository.
 
@@ -109,6 +101,10 @@ To configure the scheduled tasks for this, add the following to cron:
 ### moxxi setup ###
 
 Install the `moxxi` binary to `/usr/bin/moxxi`.
+
+```bash
+mkdir -p /etc/moxxi
+```
 
 Copy the following files to `/home/moxxi`
 

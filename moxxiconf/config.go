@@ -42,9 +42,9 @@ func prepConfig() (*map[string]interface{}, Err) {
 ValidConfig:
 	for _, configTry := range possibleConfigs {
 		data, globErr = ioutil.ReadFile(configTry)
-		switch globErr {
-		case os.ErrNotExist:
-		case nil:
+		switch {
+		case os.IsNotExist(globErr):
+		case globErr == nil:
 			break ValidConfig
 		default:
 			return nil, NewErr{
