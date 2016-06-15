@@ -27,6 +27,7 @@ func CreateMux(handlers []HandlerConfig) *http.ServeMux {
 // FormHandler - creates and returns a Handler for both Query and Form requests
 func FormHandler(config HandlerConfig) http.HandlerFunc {
 	confWriter := confWrite(config)
+	log.Printf("\n%#v\n", config)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
