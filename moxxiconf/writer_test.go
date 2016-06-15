@@ -81,51 +81,94 @@ func TestValidHost(t *testing.T) {
 
 func TestConfCheck(t *testing.T) {
 	var testData = []struct {
-		host, ip       string
-		destTLS        bool
-		port           int
-		blockedHeaders []string
-		exp            siteParams
-		expErr         error
+		siteIn  siteParams
+		confIn  HandlerConfig
+		siteOut siteParams
+		errOut  Err
 	}{
 		{
-			host:           "domain.com",
-			ip:             "127.0.0.1",
-			destTLS:        true,
-			port:           80,
-			blockedHeaders: []string{"a", "b", "c"},
-			exp: siteParams{
+			siteIn: siteParams{
 				IntHost:      "domain.com",
-				IntIP:        "127.0.0.1",
-				IntPort:      80,
 				Encrypted:    true,
+				IntPort:      80,
+				IntIP:        "127.0.0.1",
 				StripHeaders: []string{"a", "b", "c"},
 			},
-			expErr: nil,
+			confIn: HandlerConfig{},
+			siteOut: siteParams{
+				IntHost:      "domain.com",
+				IntPort:      80,
+				Encrypted:    true,
+				IntIP:        "127.0.0.1",
+				StripHeaders: []string{"a", "b", "c"},
+			},
+			errOut: nil,
+		},
+		{
+			siteIn: siteParams{
+				IntHost:      "github.com",
+				Encrypted:    true,
+				IntPort:      80,
+				IntIP:        "127.0.0.1",
+				StripHeaders: []string{"a", "b", "c"},
+			},
+			confIn: HandlerConfig{},
+			siteOut: siteParams{
+				IntHost:      "github.com",
+				IntPort:      80,
+				Encrypted:    true,
+				IntIP:        "127.0.0.1",
+				StripHeaders: []string{"a", "b", "c"},
+			},
+			errOut: nil,
+		},
+		{
+			siteIn: siteParams{
+				IntHost:      "github.com",
+				Encrypted:    true,
+				IntPort:      80,
+				IntIP:        "127.0.0.1",
+				StripHeaders: []string{"a", "b", "c"},
+			},
+			confIn: HandlerConfig{redirectTracing: true},
+			siteOut: siteParams{
+				IntHost:      "github.com",
+				IntPort:      80,
+				Encrypted:    true,
+				IntIP:        "127.0.0.1",
+				StripHeaders: []string{"a", "b", "c"},
+			},
+			errOut: nil,
+		},
+		{
+			siteIn: siteParams{
+				IntHost:      "com",
+				Encrypted:    true,
+				IntPort:      80,
+				IntIP:        "127.0.0.1",
+				StripHeaders: []string{"a", "b", "c"},
+			},
+			confIn:  HandlerConfig{},
+			siteOut: siteParams{},
+			errOut:  &NewErr{Code: ErrBadHost, value: "com"},
 		}, {
-			host:           "com",
-			ip:             "127.0.0.1",
-			destTLS:        true,
-			port:           80,
-			blockedHeaders: []string{"a", "b", "c"},
-			exp:            siteParams{},
-			expErr:         &NewErr{Code: ErrBadHost, value: "com"},
-		}, {
-			host:           "domain.com",
-			ip:             "127.1",
-			destTLS:        true,
-			port:           80,
-			blockedHeaders: []string{"a", "b", "c"},
-			exp:            siteParams{},
-			expErr:         &NewErr{Code: ErrBadIP, value: "127.1"},
+			siteIn: siteParams{
+				IntHost:      "domain.com",
+				Encrypted:    true,
+				IntPort:      80,
+				IntIP:        "127.1",
+				StripHeaders: []string{"a", "b", "c"},
+			},
+			confIn:  HandlerConfig{},
+			siteOut: siteParams{},
+			errOut:  &NewErr{Code: ErrBadIP, value: "127.1"},
 		},
 	}
 
-	for _, test := range testData {
-		vhostConf := siteParams{IntHost: test.host, IntPort: test.port, Encrypted: test.destTLS, IntIP: test.ip, StripHeaders: test.blockedHeaders}
-		eachOut, eachErr := confCheck(vhostConf, HandlerConfig{})
-		assert.Equal(t, test.exp, eachOut, "expected return and actual did not match")
-		assert.Equal(t, test.expErr, eachErr, "expected return and actual did not match")
+	for id, test := range testData {
+		eachOut, eachErr := confCheck(test.siteIn, test.confIn)
+		assert.Equal(t, test.siteOut, eachOut, "test %d - test mismatch", id)
+		assert.Equal(t, test.errOut, eachErr, "test %d - test mismatch", id)
 	}
 }
 
