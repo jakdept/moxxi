@@ -12,7 +12,7 @@ Please see [the setup instructions](/setup.md) for setup information.
 JSON Format
 -----------
 
-JSON requests should be laid out as follows - just included here:
+JSON requests should be laid out as the following exmaple:
 
 ```json
 {
@@ -24,7 +24,7 @@ JSON requests should be laid out as follows - just included here:
     "X-Frame-Options",
     "Accept-Encoding"
   ]
-},
+}
 {
   "host": "hostbaitor.com",
   "ip": "72.52.161.205",
@@ -34,7 +34,7 @@ JSON requests should be laid out as follows - just included here:
     "X-Frame-Options",
     "Accept-Encoding"
   ]
-},
+}
 {
   "host": "deleteos.com",
   "ip": "deleteos.com",
@@ -47,8 +47,22 @@ JSON requests should be laid out as follows - just included here:
 }
 ```
 
-You would then be expected to run them from CLI by putting that into a file, then running:
+```json
+{
+  "host": string,
+  "ip": string,
+  "port": int,
+  "tls": bool,
+  "blockedHeaders": []string
+}
+```
+
+Out of these items, only `host` and `ip` are actually required.
+
+It is then expected to run this with something like:
 
 ```bash
 curl -d @inputFile -o outputFile moxxi.domain.com/appropiate/JSON/url
 ```
+
+The expected response depends on your `responseTempl` for the path.
