@@ -202,6 +202,7 @@ func redirectTrace(initHost string, initPort int, initTLS bool) (string, int, bo
 	}
 
 	c := &http.Client{
+		Timeout: time.Second * 10,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
