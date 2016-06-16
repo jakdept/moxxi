@@ -2,6 +2,7 @@ package moxxiConf
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"github.com/dchest/uniuri"
 	"net"
@@ -200,7 +201,15 @@ func redirectTrace(initHost string, initPort int, initTLS bool) (string, int, bo
 		initURL = (fmt.Sprintf("http://%s:%d/", initHost, initPort))
 	}
 
-	resp, err := http.Head(initURL)
+	c := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+
+	resp, err := c.Head(initURL)
 	if err != nil {
 		return "", 0, false, NewErr{
 			Code:    ErrBadHostnameTrace,
