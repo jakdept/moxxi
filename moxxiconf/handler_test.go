@@ -9,20 +9,21 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"strings"
+	"log"
+	// "strings"
 	"testing"
 	"text/template"
 )
 
 func TestFormHandler_POST(t *testing.T) {
 	var testData = []struct {
-		reqMethod string
+		// reqMethod string
 		reqParams map[string][]string
 		resCode   int
 		fileOut   string
 	}{
 		{
-			reqMethod: "POST",
+			// reqMethod: "POST",
 			reqParams: map[string][]string{
 				"host":   []string{"proxied.com"},
 				"ip":     []string{"10.10.10.10"},
@@ -47,25 +48,28 @@ func TestFormHandler_POST(t *testing.T) {
 		`{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}} {{ range .StripHeaders }}{{.}} {{end}}`))
 
 	testConfig.resTempl = template.Must(template.New("testing").Parse(
-		`{{ .ExtHost }}`))
+		`{{range .}} {{ .ExtHost }} {{ end }}`))
 
 	server := httptest.NewServer(FormHandler(testConfig))
 	defer server.Close()
 
-	client := &http.Client{}
+	// client := &http.Client{}
 
 	for _, test := range testData {
 		params := url.Values(test.reqParams)
-		req, err := http.NewRequest(test.reqMethod, server.URL,
-			strings.NewReader(params.Encode()))
+		log.Printf("%#v", params)
+		resp, err := http.PostForm(server.URL, params)
 
-		resp, err := client.Do(req)
+		// req, err := http.NewRequest(test.reqMethod, server.URL,
+		// 	strings.NewReader(params.Encode()))
+
+		// resp, err := client.Do(req)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		assert.Nil(t, err, "problem reading response - %v", err)
 
 		proxyOut, err := ioutil.ReadFile(
-			fmt.Sprintf("%s/%s.%s",
+			fmt.Sprintf("%s/%s%s",
 				testConfig.confPath,
 				bytes.TrimSpace(body),
 				testConfig.confExt))

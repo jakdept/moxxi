@@ -80,8 +80,8 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 		}
 
 		if extErr := config.resTempl.Execute(w, []siteParams{vhost}); extErr != nil {
-			http.Error(w, pkgErr.Error(), http.StatusInternalServerError)
-			log.Println(pkgErr.LogError(r))
+			http.Error(w, extErr.Error(), http.StatusInternalServerError)
+			log.Println(extErr.Error())
 			return
 		}
 		return
