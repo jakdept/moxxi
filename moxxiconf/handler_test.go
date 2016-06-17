@@ -1,11 +1,10 @@
 package moxxiConf
 
-/*
-
 import (
+	"bytes"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -16,17 +15,14 @@ import (
 )
 
 func TestFormHandler_POST(t *testing.T) {
-	t.SkipNow()
 	var testData = []struct {
 		reqMethod string
-		reqURL    string
 		reqParams map[string][]string
 		resCode   int
 		fileOut   string
 	}{
 		{
 			reqMethod: "POST",
-			reqURL:    "domain.com",
 			reqParams: map[string][]string{
 				"host":   []string{"proxied.com"},
 				"ip":     []string{"10.10.10.10"},
@@ -40,48 +36,44 @@ func TestFormHandler_POST(t *testing.T) {
 	}
 
 	testConfig := HandlerConfig{
-		baseURL      string
-		confPath     string
-		confExt      string
-		excludes     []string
-		confFile     string
-		confTempl    *template.Template
-		resFile      string
-		resTempl     *template.Template
-		subdomainLen int
+		baseURL:      "test.com",
+		confPath:     os.TempDir(),
+		confExt:      ".testout",
+		exclude:      []string{"a", "b", "c"},
+		subdomainLen: 8,
 	}
 
-	templPath := os.TempDir()
-	templExt := ".out"
-	baseURL := "domain.com"
-	subdomainLen := 1
-	excludes := []string{"a.domain.com", "b.domain.com", "c.domain.com"}
+	testConfig.confTempl = template.Must(template.New("testing").Parse(
+		`{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}} {{ range .StripHeaders }}{{.}} {{end}}`))
 
-	fileTemplString := `{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}} {{ range .StripHeaders }}{{.}} {{end}}`
-	fileTempl := template.Must(template.New("testing").Parse(fileTemplString))
+	testConfig.resTempl = template.Must(template.New("testing").Parse(
+		`{{ .ExtHost }}`))
 
-	resTemplString := `{{ .ExtHost }}`
-	resTempl := template.Must(template.New("testing").Parse(resTemplString))
+	server := httptest.NewServer(FormHandler(testConfig))
+	defer server.Close()
 
-	handler := FormHandler(baseURL, templPath, templExt, excludes, *fileTempl, *resTempl, subdomainLen)
+	client := &http.Client{}
 
 	for _, test := range testData {
-		w := httptest.NewRecorder()
-
 		params := url.Values(test.reqParams)
-		r, err := http.NewRequest(test.reqMethod, test.reqURL,
+		req, err := http.NewRequest(test.reqMethod, server.URL,
 			strings.NewReader(params.Encode()))
 
-		http.HandlerFunc(handler).ServeHTTP(w, r)
+		resp, err := client.Do(req)
 
-		log.Println(w.Body.String())
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.Nil(t, err, "problem reading response - %v", err)
 
-		file := templPath + PathSep + w.Body.String() + templExt
-		contents, err := ioutil.ReadFile(file)
+		proxyOut, err := ioutil.ReadFile(
+			fmt.Sprintf("%s/%s.%s",
+				testConfig.confPath,
+				bytes.TrimSpace(body),
+				testConfig.confExt))
 
 		assert.Nil(t, err, "problem reading file - %v", err)
-		assert.Equal(t, test.resCode, w.Code, "got the wrong response code")
-		assert.Equal(t, test.fileOut, string(contents), "wrong data written to the file")
+
+		assert.Equal(t, test.resCode, resp.StatusCode, "got the wrong response code")
+		assert.Equal(t, test.fileOut, string(proxyOut), "wrong data written to the file")
+		resp.Body.Close()
 	}
 }
-*/
