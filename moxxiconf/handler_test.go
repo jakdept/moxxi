@@ -41,7 +41,6 @@ func TestFormHandler_POST(t *testing.T) {
 		fileOut   string
 	}{
 		{
-			// reqMethod: "POST",
 			reqParams: map[string][]string{
 				"host":   []string{"proxied.com"},
 				"ip":     []string{"10.10.10.10"},
@@ -51,10 +50,47 @@ func TestFormHandler_POST(t *testing.T) {
 			},
 			resCode: 200,
 			fileOut: `proxied.com 10.10.10.10 80 true KeepAlive b c `,
+		}, {
+			reqParams: map[string][]string{
+				"ip":     []string{"10.10.10.10"},
+				"port":   []string{"80"},
+				"tls":    []string{"true"},
+				"header": []string{"KeepAlive", "b", "c"},
+			},
+			resCode: http.StatusPreconditionFailed,
+			fileOut: "no provided hostname\n",
+		}, {
+			reqParams: map[string][]string{
+				"host":   []string{"proxied.com"},
+				"port":   []string{"80"},
+				"tls":    []string{"true"},
+				"header": []string{"KeepAlive", "b", "c"},
+			},
+			resCode: http.StatusPreconditionFailed,
+			fileOut: "no provided IP\n",
+		}, {
+			reqParams: map[string][]string{
+				"host":   []string{"proxied.com"},
+				"ip":     []string{"10.10.10.10"},
+				"tls":    []string{"true"},
+				"header": []string{"KeepAlive", "b", "c"},
+			},
+			resCode: 200,
+			fileOut: `proxied.com 10.10.10.10 80 true KeepAlive b c `,
+		}, {
+			reqParams: map[string][]string{
+				"host":   []string{".com"},
+				"ip":     []string{"10.potato10.10.10"},
+				"port":   []string{"80"},
+				"tls":    []string{"true"},
+				"header": []string{"KeepAlive", "b", "c"},
+			},
+			resCode: http.StatusPreconditionFailed,
+			fileOut: "bad hostname provided [.com]\n",
 		},
 	}
 
-	for _, test := range testData {
+	for id, test := range testData {
 		params := url.Values(test.reqParams)
 		resp, err := http.PostForm(server.URL, params)
 
@@ -63,19 +99,23 @@ func TestFormHandler_POST(t *testing.T) {
 
 		// resp, err := client.Do(req)
 
+		assert.Equal(t, test.resCode, resp.StatusCode, "test %d - got the wrong response code", id)
 		body, err := ioutil.ReadAll(resp.Body)
-		assert.Nil(t, err, "problem reading response - %v", err)
+		assert.Nil(t, err, "test %d - problem reading response - %v", id, err)
+		if resp.StatusCode == 200 {
+			proxyOut, err := ioutil.ReadFile(
+				fmt.Sprintf("%s/%s%s",
+					testConfig.confPath,
+					bytes.TrimSpace(body),
+					testConfig.confExt))
 
-		proxyOut, err := ioutil.ReadFile(
-			fmt.Sprintf("%s/%s%s",
-				testConfig.confPath,
-				bytes.TrimSpace(body),
-				testConfig.confExt))
+			assert.Nil(t, err, "test %d - problem reading file - %v", id, err)
 
-		assert.Nil(t, err, "problem reading file - %v", err)
+			assert.Equal(t, test.fileOut, string(proxyOut), "test %d - wrong data written to the file", id)
+		} else {
+			assert.Equal(t, string(body), test.fileOut, "test %d - response and expected response did not match", id)
 
-		assert.Equal(t, test.resCode, resp.StatusCode, "got the wrong response code")
-		assert.Equal(t, test.fileOut, string(proxyOut), "wrong data written to the file")
+		}
 		resp.Body.Close()
 	}
 }

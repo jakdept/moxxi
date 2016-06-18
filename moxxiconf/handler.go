@@ -241,6 +241,9 @@ func StaticHandler(config HandlerConfig) http.HandlerFunc {
 	res, err := ioutil.ReadFile(config.resFile)
 	if err != nil {
 		log.Printf("bad static response file %s - %v", config.resFile, err)
+		return func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "no data", http.StatusInternalServerError)
+		}
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
