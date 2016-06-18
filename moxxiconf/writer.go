@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
-	"github.com/dchest/uniuri"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dchest/uniuri"
 )
 
 func inArr(a []string, t string) bool {
@@ -64,8 +65,13 @@ func confCheck(proxy siteParams, config HandlerConfig) (siteParams, Err) {
 	conf.Encrypted = proxy.Encrypted
 	conf.StripHeaders = proxy.StripHeaders
 
+	var newIntHost string
+	var newIntPort int
+	var newEncrypted bool
+	var err Err
+
 	if config.redirectTracing {
-		newIntHost, newIntPort, newEncrypted, err := redirectTrace(conf.IntHost, conf.IntPort, conf.Encrypted)
+		newIntHost, newIntPort, newEncrypted, err = redirectTrace(conf.IntHost, conf.IntPort, conf.Encrypted)
 		if err == nil {
 			conf.IntHost = newIntHost
 			conf.IntPort = newIntPort
@@ -73,7 +79,7 @@ func confCheck(proxy siteParams, config HandlerConfig) (siteParams, Err) {
 		}
 	}
 
-	return conf, nil
+	return conf, err
 }
 
 func confWrite(config HandlerConfig) func(siteParams) (siteParams, Err) {
