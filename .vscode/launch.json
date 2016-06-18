@@ -2,10 +2,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "delve",
+            "name": "code",
             "type": "go",
             "request": "launch",
             "mode": "debug",
+            "remotePath": "",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "program": "${workspaceRoot}",
+            "env": {},
+            "args": []
+        },
+        {
+            "name": "unit_tests",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
             "remotePath": "",
             "port": 2345,
             "host": "127.0.0.1",
