@@ -14,7 +14,7 @@ func CreateMux(handlers []HandlerConfig, l *log.Logger) *http.ServeMux {
 	for _, handler := range handlers {
 		switch handler.handlerType {
 		case "json":
-			mux.HandleFunc(handler.handlerRoute, ChunkedJSONHandler(handler, l))
+			mux.HandleFunc(handler.handlerRoute, JSONHandler(handler, l))
 		case "form":
 			mux.HandleFunc(handler.handlerRoute, FormHandler(handler, l))
 		case "static":
@@ -89,9 +89,9 @@ func FormHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 }
 
 // JSONHandler - creates and returns a Handler for JSON body requests
-func ChunkedJSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
+func JSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 
-	var tStart, tEnd, tBody, tError *template.Template
+	var tStart, tEnd, tBody *template.Template
 
 	for _, each := range config.resTempl.Templates() {
 		switch each.Name() {
@@ -101,13 +101,11 @@ func ChunkedJSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 			tEnd = each
 		case "body":
 			tBody = each
-		case "error":
-			tError = each
 		}
 	}
 
-	if tStart == nil || tEnd == nil || tBody == nil || tError == nil {
-		return JSONHandler(config, l)
+	if tStart == nil || tEnd == nil || tBody == nil {
+		return InvalidHandler("bad template", http.StatusInternalServerError)
 	}
 
 	confWriter := confWrite(config)
@@ -115,62 +113,55 @@ func ChunkedJSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		var emptyInterface interface{}
+		type locSiteParams struct {
+			ExtHost      string
+			IntHost      string
+			IntIP        string
+			IntPort      int
+			Encrypted    bool
+			StripHeaders []string
+			ErrorString  string
+			Error        Err
+		}
+
 		tStart.Execute(w, emptyInterface)
 
 		decoder := json.NewDecoder(r.Body)
-		var v struct {
-			host           string
-			ip             string
-			port           int
-			tls            bool
-			blockedHeaders []string
-		}
 
 		for decoder.More() {
-			err := decoder.Decode(&v)
-			if err != nil {
+			var v siteParams
+			if err := decoder.Decode(&v); err != nil {
 				continue
 			}
 
-			vhost := siteParams{
-				IntHost:      v.host,
-				IntIP:        v.ip,
-				Encrypted:    v.tls,
-				IntPort:      v.port,
-				StripHeaders: v.blockedHeaders,
+			v, err := confCheck(v, config)
+			if err == nil {
+				v, err = confWriter(v)
 			}
 
-			confConfig, err := confCheck(vhost, config)
+			var vPlus = struct {
+				ExtHost      string
+				IntHost      string
+				IntIP        string
+				IntPort      int
+				Encrypted    bool
+				StripHeaders []string
+				Error        string
+			}{
+				ExtHost:      v.ExtHost,
+				IntHost:      v.IntHost,
+				IntIP:        v.IntIP,
+				IntPort:      v.IntPort,
+				Encrypted:    v.Encrypted,
+				StripHeaders: v.StripHeaders,
+			}
+
 			if err != nil {
-				tError.Execute(w, vhost)
-			}
-
-			// #TODO# maybe change the style of siteParams to include myError?
-			if confConfig, err := confWriter(confConfig); err != nil {
 				log.Println(err.LogError(r))
-				erredConfig := struct {
-					ExtHost      string
-					IntHost      string
-					IntIP        string
-					IntPort      int
-					Encrypted    bool
-					StripHeaders []string
-					myError      string
-				}{
-					ExtHost:      confConfig.ExtHost,
-					IntHost:      confConfig.IntHost,
-					IntIP:        confConfig.IntIP,
-					IntPort:      confConfig.IntPort,
-					Encrypted:    confConfig.Encrypted,
-					StripHeaders: confConfig.StripHeaders,
-					myError:      err.Error(),
-				}
-				if err := tError.Execute(w, erredConfig); err != nil {
-					log.Println(err.Error())
-				}
+				vPlus.Error = err.Error()
 			}
 
-			if err = tBody.Execute(w, confConfig); err != nil {
+			if err := tBody.Execute(w, vPlus); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				log.Println(err.Error())
 				return
@@ -180,70 +171,12 @@ func ChunkedJSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 	}
 }
 
-func JSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
-	confWriter := confWrite(config)
-	return func(w http.ResponseWriter, r *http.Request) {
-		var v []struct {
-			host           string
-			ip             string
-			port           int
-			tls            bool
-			blockedHeaders []string
-		}
-		var responseConfig []siteParams
-
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&v)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-		for _, each := range v {
-
-			vhost := siteParams{
-				IntHost:      each.host,
-				IntIP:        each.ip,
-				Encrypted:    each.tls,
-				IntPort:      each.port,
-				StripHeaders: each.blockedHeaders,
-			}
-
-			confConfig, err := confCheck(vhost, config)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-			}
-
-			confConfig, err = confCheck(vhost, config)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusPreconditionFailed)
-				log.Println(err.LogError(r))
-				return
-			}
-
-			if confConfig, err = confWriter(confConfig); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				log.Println(err.LogError(r))
-				return
-			}
-
-			responseConfig = append(responseConfig, confConfig)
-		}
-
-		if err := config.resTempl.Execute(w, responseConfig); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Println(err.Error())
-			return
-		}
-	}
-}
-
 // StaticHandler - creates and returns a Handler to simply respond with a static response to every request
 func StaticHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 	res, err := ioutil.ReadFile(config.resFile)
 	if err != nil {
 		log.Printf("bad static response file %s - %v", config.resFile, err)
-		return func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "no data", http.StatusInternalServerError)
-		}
+		return InvalidHandler("no data", http.StatusInternalServerError)
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -251,5 +184,11 @@ func StaticHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
+	}
+}
+
+func InvalidHandler(msg string, code int) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, msg, code)
 	}
 }
