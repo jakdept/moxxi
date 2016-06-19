@@ -2,12 +2,13 @@ package moxxiConf
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net"
 	"os"
 	"testing"
 	"text/template"
+
+	"github.com/stretchr/testify/assert"
 	// "strings"
 )
 
@@ -125,7 +126,7 @@ func TestConfCheck(t *testing.T) {
 		{
 			siteIn: siteParams{
 				IntHost:      "github.com",
-				Encrypted:    true,
+				Encrypted:    false,
 				IntPort:      80,
 				IntIP:        "127.0.0.1",
 				StripHeaders: []string{"a", "b", "c"},
@@ -133,7 +134,7 @@ func TestConfCheck(t *testing.T) {
 			confIn: HandlerConfig{redirectTracing: true},
 			siteOut: siteParams{
 				IntHost:      "github.com",
-				IntPort:      80,
+				IntPort:      443,
 				Encrypted:    true,
 				IntIP:        "127.0.0.1",
 				StripHeaders: []string{"a", "b", "c"},
@@ -168,7 +169,17 @@ func TestConfCheck(t *testing.T) {
 	for id, test := range testData {
 		eachOut, eachErr := confCheck(test.siteIn, test.confIn)
 		assert.Equal(t, test.siteOut, eachOut, "test %d - test mismatch", id)
-		assert.Equal(t, test.errOut, eachErr, "test %d - test mismatch", id)
+		if test.errOut == nil {
+			assert.Equal(t, test.errOut, eachErr,
+				"test %d - test mismatch - should be nil, got %v", id, eachErr)
+		} else if eachErr == nil {
+			assert.Equal(t, test.errOut, eachErr,
+				"test %d - test mismatch - was nil, got %v", id, test.errOut)
+		} else {
+			assert.Equal(t, test.errOut, eachErr,
+				"test %d - test mismatch - should be nil, got \n%v\nand\n%v\n",
+				id, test.errOut, eachErr)
+		}
 	}
 }
 

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/JackKnifed/moxxi/moxxiconf"
-	gorillaHandlers "github.com/gorilla/handlers"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/JackKnifed/moxxi/moxxiconf"
+	gorillaHandlers "github.com/gorilla/handlers"
 )
 
 func main() {
@@ -14,7 +15,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := moxxiConf.CreateMux(handlers)
+	logger := log.New(os.Stderr, "", log.LstdFlags|log.LUTC|log.Lshortfile)
+	mux := moxxiConf.CreateMux(handlers, logger)
 
 	var errChan chan error
 

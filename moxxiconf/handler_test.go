@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -25,13 +26,16 @@ func TestFormHandler_POST(t *testing.T) {
 		subdomainLen: 8,
 	}
 
-	testConfig.confTempl = template.Must(template.New("testing").Parse(
-		`{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}} {{ range .StripHeaders }}{{.}} {{end}}`))
+	confTemplVal := "{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}}"
+	confTemplVal += " {{ range .StripHeaders }}{{.}} {{end}}"
 
-	testConfig.resTempl = template.Must(template.New("testing").Parse(
-		`{{range .}} {{ .ExtHost }} {{ end }}`))
+	testConfig.confTempl = template.Must(template.New("testing").Parse(confTemplVal))
 
-	server := httptest.NewServer(FormHandler(testConfig))
+	resTemplVal := "{{range .}} {{ .ExtHost }} {{ end }}"
+	testConfig.resTempl = template.Must(template.New("testing").Parse(resTemplVal))
+
+	server := httptest.NewServer(FormHandler(testConfig,
+		log.New(os.Stdout, "", log.LstdFlags)))
 	defer server.Close()
 
 	var testData = []struct {
@@ -99,7 +103,8 @@ func TestFormHandler_POST(t *testing.T) {
 
 		// resp, err := client.Do(req)
 
-		assert.Equal(t, test.resCode, resp.StatusCode, "test %d - got the wrong response code", id)
+		assert.Equal(t, test.resCode, resp.StatusCode,
+			"test %d - got the wrong response code", id)
 		body, err := ioutil.ReadAll(resp.Body)
 		assert.Nil(t, err, "test %d - problem reading response - %v", id, err)
 		if resp.StatusCode == 200 {
@@ -111,10 +116,11 @@ func TestFormHandler_POST(t *testing.T) {
 
 			assert.Nil(t, err, "test %d - problem reading file - %v", id, err)
 
-			assert.Equal(t, test.fileOut, string(proxyOut), "test %d - wrong data written to the file", id)
+			assert.Equal(t, test.fileOut, string(proxyOut),
+				"test %d - wrong data written to the file", id)
 		} else {
-			assert.Equal(t, string(body), test.fileOut, "test %d - response and expected response did not match", id)
-
+			assert.Equal(t, string(body), test.fileOut,
+				"test %d - response and expected response did not match", id)
 		}
 		resp.Body.Close()
 	}
@@ -130,7 +136,8 @@ func TestStaticHandler(t *testing.T) {
 	_, err = file.Write(expected)
 	assert.Nil(t, err, "could no open temp file for writing - %v", err)
 
-	server := httptest.NewServer(StaticHandler(HandlerConfig{resFile: file.Name()}))
+	server := httptest.NewServer(StaticHandler(HandlerConfig{resFile: file.Name()},
+		log.New(os.Stdout, "", log.LstdFlags)))
 	defer server.Close()
 
 	for i := 0; i < 10; i++ {

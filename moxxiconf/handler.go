@@ -9,23 +9,23 @@ import (
 	"text/template"
 )
 
-func CreateMux(handlers []HandlerConfig) *http.ServeMux {
+func CreateMux(handlers []HandlerConfig, l *log.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	for _, handler := range handlers {
 		switch handler.handlerType {
 		case "json":
-			mux.HandleFunc(handler.handlerRoute, ChunkedJSONHandler(handler))
+			mux.HandleFunc(handler.handlerRoute, ChunkedJSONHandler(handler, l))
 		case "form":
-			mux.HandleFunc(handler.handlerRoute, FormHandler(handler))
+			mux.HandleFunc(handler.handlerRoute, FormHandler(handler, l))
 		case "static":
-			mux.HandleFunc(handler.handlerRoute, StaticHandler(handler))
+			mux.HandleFunc(handler.handlerRoute, StaticHandler(handler, l))
 		}
 	}
 	return mux
 }
 
 // FormHandler - creates and returns a Handler for both Query and Form requests
-func FormHandler(config HandlerConfig) http.HandlerFunc {
+func FormHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 	confWriter := confWrite(config)
 	// log.Printf("\n%#v\n", config)
 
@@ -89,7 +89,7 @@ func FormHandler(config HandlerConfig) http.HandlerFunc {
 }
 
 // JSONHandler - creates and returns a Handler for JSON body requests
-func ChunkedJSONHandler(config HandlerConfig) http.HandlerFunc {
+func ChunkedJSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 
 	var tStart, tEnd, tBody, tError *template.Template
 
@@ -107,7 +107,7 @@ func ChunkedJSONHandler(config HandlerConfig) http.HandlerFunc {
 	}
 
 	if tStart == nil || tEnd == nil || tBody == nil || tError == nil {
-		return JSONHandler(config)
+		return JSONHandler(config, l)
 	}
 
 	confWriter := confWrite(config)
@@ -180,7 +180,7 @@ func ChunkedJSONHandler(config HandlerConfig) http.HandlerFunc {
 	}
 }
 
-func JSONHandler(config HandlerConfig) http.HandlerFunc {
+func JSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 	confWriter := confWrite(config)
 	return func(w http.ResponseWriter, r *http.Request) {
 		var v []struct {
@@ -237,7 +237,7 @@ func JSONHandler(config HandlerConfig) http.HandlerFunc {
 }
 
 // StaticHandler - creates and returns a Handler to simply respond with a static response to every request
-func StaticHandler(config HandlerConfig) http.HandlerFunc {
+func StaticHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 	res, err := ioutil.ReadFile(config.resFile)
 	if err != nil {
 		log.Printf("bad static response file %s - %v", config.resFile, err)
