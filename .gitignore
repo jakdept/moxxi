@@ -26,3 +26,5 @@ _testmain.go
 coverage.out
 cover.out
 c.out
+debug
+test
