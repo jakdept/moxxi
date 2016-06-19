@@ -1,0 +1,58 @@
+{{ define "tStart" -}}
+This is your response to your JSON request
+
+{{ end }}
+
+{{ define "tBody" -}}
+	{{- with . -}}
+		{{- with .Error -}}
+		!!
+		{{- else -}}
+		OK
+		{{- end -}}
+	{{- "\t" -}}
+		{{- if .Encrypted -}} 
+			https://{{- .ExtHost -}}:{{- .IntPort -}}
+		{{- else -}}
+			http://{{- .ExtHost -}}:{{- .IntPort -}}
+		{{- end -}}
+	{{- "\t" -}}
+		{{- .IntHost -}}
+	{{- "\t" -}}
+		{{- .IntIP -}}
+	{{- "\t" -}}
+		{{- if .Encrypted -}}
+		HTTPS
+		{{- else -}}
+		Plain
+		{{- end -}}
+	{{- "\t" -}}
+		{{- with .StripHeaders -}}
+			{{- range .StripHeaders -}}
+				{{- . -}}
+			{{- end -}}
+		{{- end -}}
+	{{- "\t" -}}
+		{{- with .ErrorString -}}
+			{{- . -}}
+		{{- end -}}
+	{{- "\n" -}}
+	{{- end -}}
+{{- end }}
+
+{{ define "tEnd" }}
+
+That's all folks!
+{{- end }}
+
+{{ define "tAll" }}
+	{{ template "tStart" }}
+	{{ with . }}
+		{{ range . }}
+			{{ template "tBody" . }}
+		{{ end }}
+	{{ end }}
+	{{ template "tEnd" }}
+{{ end }}
+
+{{ template "tAll" . }}

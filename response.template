@@ -11,6 +11,11 @@
 {{ define "tBody" }}
 	{{ with . }}
 			<tr>
+				{{ with .Error }}
+				<td>
+					FAILURE
+				</td>
+				{{ end }} 
 				<td>
 				{{ if .Encrypted }} 
 					<a href="https://{{ .ExtHost }}">{{ .ExtHost }}</a>
@@ -40,6 +45,11 @@
 					{{ end}}
 				</td>
 				{{ end }}
+				{{ with .myError }}
+				<td>
+					{{ . }}
+				</td>
+				{{ end }}
 			</tr>
 	{{ end }}
 {{ end }}
@@ -48,41 +58,6 @@
 		</table>
 	</body>
 </html>
-{{ end }}
-
-{{ define "tError" }}
-	{{ with . }}
-			<tr>
-				<td>
-					FAILURE
-				</td>
-				<td>
-					{{ .IntHost }}
-				</td>
-				<td>
-					{{ .IntIP }}
-				</td>
-				<td>
-					{{ if .Encrypted }}
-					Encryption enabled
-					{{ else }}
-					Encryption disabled
-					{{ end }}
-				</td>
-				{{ with .StripHeaders }}
-				<td>
-					{{ range . }}
-					<div class="stripHeader">
-						{{ . }}
-					</div>
-					{{ end}}
-				</td>
-				{{ end }}
-				{{ with .myError }}
-					{{ . }}
-				{{ end }}
-			</tr>
-	{{ end }}
 {{ end }}
 
 {{ define "tAll" }}
