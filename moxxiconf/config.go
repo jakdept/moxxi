@@ -100,6 +100,8 @@ func validateConfig(dirtyConfig *map[string]interface{}) Err {
 		"confFile",
 		"resFile",
 		"ipFile",
+		"accessLog",
+		"errorLog"
 	} {
 		if _, ok := c[part]; ok {
 			if _, ok := c[part].(string); !ok {
@@ -292,18 +294,19 @@ func validateConfigHandler(pConfig *map[string]interface{}, id int) Err {
 }
 
 func loadConfig(pConfig *map[string]interface{}) (
-	[]string, []HandlerConfig, Err) {
+	[]string, string, string, []HandlerConfig, Err) {
 
 	c := *pConfig
 	var ok bool
 	var listens []string
+	var accessLog, errorLog string
 
 	if untypedListens, ok := c["listen"].([]interface{}); ok {
 		for _, each := range untypedListens {
 			if oneListen, ok := each.(string); ok {
 				listens = append(listens, oneListen)
 			} else {
-				return []string{}, []HandlerConfig{}, NewErr{
+				return nil, []string{}, []HandlerConfig{}, NewErr{
 					Code:    ErrConfigLoadType,
 					value:   "listen",
 					deepErr: fmt.Errorf("wrong type of %T - %#v", each, each),
@@ -311,18 +314,26 @@ func loadConfig(pConfig *map[string]interface{}) (
 			}
 		}
 	} else {
-		return []string{}, []HandlerConfig{}, NewErr{
+		return nil, []string{}, []HandlerConfig{}, NewErr{
 			Code:    ErrConfigLoadStructure,
 			value:   "listen",
 			deepErr: fmt.Errorf("wrong type of %T - %#v", untypedListens, untypedListens),
 		}
 	}
 
+	if accessLog, ok = c["accessLog"].(string); !ok {
+		accessLog = ""
+	}
+	if errorLog, ok = c["errorLog"].(string); !ok {
+		accessLog = ""
+	}
+	
+
 	var handlers []HandlerConfig
 	var dirtyHandlers []interface{}
 
 	if dirtyHandlers, ok = c["handler"].([]interface{}); !ok {
-		return []string{}, []HandlerConfig{}, NewErr{
+		return nil, []string{}, []HandlerConfig{}, NewErr{
 			Code:    ErrConfigLoadStructure,
 			value:   "handler",
 			deepErr: fmt.Errorf("wrong type of %T", c["listen"]),
@@ -332,13 +343,13 @@ func loadConfig(pConfig *map[string]interface{}) (
 	for _, oneHandler := range dirtyHandlers {
 		cleanHandler, err := decodeHandler(oneHandler)
 		if err != nil {
-			return []string{}, []HandlerConfig{}, err
+			return nil, []string{}, []HandlerConfig{}, err
 		} else {
 			handlers = append(handlers, cleanHandler)
 		}
 	}
 
-	return listens, handlers, nil
+	return nil, listens, handlers, nil
 }
 
 func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
