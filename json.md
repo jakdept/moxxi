@@ -17,7 +17,7 @@ struct {
   "IntHost": string,
   "IntIP": string,
   "IntPort": string,
-  "Encrypted": bool.
+  "Encrypted": bool,
   "StripHeaders": []string
 }
 ```
