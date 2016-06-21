@@ -11,27 +11,33 @@ import (
 )
 
 func main() {
+	var err error
+
 	listens, accessLogFile, errorLogFile, handlers, err := moxxiConf.LoadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var logger *log.Logger
-	var err error
-	var errorLog, accessLog *io.Writer
+	var errorLog, accessLog io.Writer
 
 	if errorLogFile != "" {
 		errorLog, err = os.OpenFile(errorLogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 		if err != nil {
-			errorLog = os.Stderr
+			errorLog = nil
 		}
+	}
+	if errorLog == nil {
+		errorLog = os.Stderr
 	}
 
 	if accessLogFile != "" {
 		accessLog, err = os.OpenFile(accessLogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 		if err != nil {
-			errorLog = os.Stdout
+			errorLog = nil
 		}
+	}
+	if accessLog == nil {
+		accessLog = os.Stdout
 	}
 
 	logger := log.New(os.Stderr, "", log.LstdFlags|log.LUTC|log.Lshortfile)
