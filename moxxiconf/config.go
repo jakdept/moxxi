@@ -9,22 +9,22 @@ import (
 	"text/template"
 )
 
-func LoadConfig() ([]string, []HandlerConfig, Err) {
+func LoadConfig() ([]string, string, string, []HandlerConfig, Err) {
 	config, err := prepConfig()
 	if err != nil {
-		return []string{}, []HandlerConfig{}, err
+		return nil, "", "", []HandlerConfig{}, err
 	}
 
 	if err = validateConfig(config); err != nil {
-		return []string{}, []HandlerConfig{}, err
+		return nil, "", "", []HandlerConfig{}, err
 	}
 
-	handlers, listens, err := loadConfig(config)
+	listens, accessLog, errorLog, handlers, err := loadConfig(config)
 	if err != nil {
-		return []string{}, []HandlerConfig{}, err
+		return nil, "", "", []HandlerConfig{}, err
 	}
 
-	return handlers, listens, nil
+	return listens, accessLog, errorLog, handlers, nil
 }
 
 func prepConfig() (*map[string]interface{}, Err) {
@@ -101,7 +101,7 @@ func validateConfig(dirtyConfig *map[string]interface{}) Err {
 		"resFile",
 		"ipFile",
 		"accessLog",
-		"errorLog"
+		"errorLog",
 	} {
 		if _, ok := c[part]; ok {
 			if _, ok := c[part].(string); !ok {
@@ -306,7 +306,7 @@ func loadConfig(pConfig *map[string]interface{}) (
 			if oneListen, ok := each.(string); ok {
 				listens = append(listens, oneListen)
 			} else {
-				return nil, []string{}, []HandlerConfig{}, NewErr{
+				return nil, "", "", nil, NewErr{
 					Code:    ErrConfigLoadType,
 					value:   "listen",
 					deepErr: fmt.Errorf("wrong type of %T - %#v", each, each),
@@ -314,7 +314,7 @@ func loadConfig(pConfig *map[string]interface{}) (
 			}
 		}
 	} else {
-		return nil, []string{}, []HandlerConfig{}, NewErr{
+		return nil, "", "", nil, NewErr{
 			Code:    ErrConfigLoadStructure,
 			value:   "listen",
 			deepErr: fmt.Errorf("wrong type of %T - %#v", untypedListens, untypedListens),
@@ -325,15 +325,14 @@ func loadConfig(pConfig *map[string]interface{}) (
 		accessLog = ""
 	}
 	if errorLog, ok = c["errorLog"].(string); !ok {
-		accessLog = ""
+		errorLog = ""
 	}
-	
 
 	var handlers []HandlerConfig
 	var dirtyHandlers []interface{}
 
 	if dirtyHandlers, ok = c["handler"].([]interface{}); !ok {
-		return nil, []string{}, []HandlerConfig{}, NewErr{
+		return nil, "", "", nil, NewErr{
 			Code:    ErrConfigLoadStructure,
 			value:   "handler",
 			deepErr: fmt.Errorf("wrong type of %T", c["listen"]),
@@ -343,13 +342,13 @@ func loadConfig(pConfig *map[string]interface{}) (
 	for _, oneHandler := range dirtyHandlers {
 		cleanHandler, err := decodeHandler(oneHandler)
 		if err != nil {
-			return nil, []string{}, []HandlerConfig{}, err
+			return nil, "", "", nil, err
 		} else {
 			handlers = append(handlers, cleanHandler)
 		}
 	}
 
-	return nil, listens, handlers, nil
+	return listens, accessLog, errorLog, handlers, nil
 }
 
 func decodeHandler(dirtyHandler interface{}) (HandlerConfig, Err) {
