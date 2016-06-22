@@ -1,14 +1,45 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/JackKnifed/moxxi/moxxiconf"
 	gorillaHandlers "github.com/gorilla/handlers"
+	"github.com/natefinch/lumberjack"
 )
+
+// BroadCastSignal() a single signal across all channels ain an array
+func BroadcastSignal(in chan os.Signal, out []chan os.Signal, done chan struct{}) {
+	var val os.Signal
+	for {
+		select {
+		case val = <-in:
+			fmt.Println("got a usr1")
+			for _, each := range out {
+				each <- val
+			}
+		case <-done:
+			return
+		}
+	}
+}
+
+func RotateLog(l *lumberjack.Logger, c chan os.Signal, done chan struct{}) {
+	for {
+		select {
+		case <-c:
+			l.Rotate()
+		case <-done:
+			return
+		}
+	}
+}
 
 func main() {
 	var err error
@@ -18,29 +49,44 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var errorLog, accessLog io.Writer
+	sigUsr := make(chan os.Signal, 1)
 
+	done := make(chan struct{})
+	defer close(done)
+
+	signal.Notify(sigUsr, syscall.SIGUSR1)
+	sigArr := []chan os.Signal{}
+
+	var errorLog, accessLog io.Writer
 	if errorLogFile != "" {
-		errorLog, err = os.OpenFile(errorLogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
-		if err != nil {
-			errorLog = nil
+		errorLog := &lumberjack.Logger{
+			Filename:   errorLogFile,
+			MaxBackups: 5,
 		}
-	}
-	if errorLog == nil {
+		myChan := make(chan os.Signal)
+
+		go RotateLog(errorLog, myChan, done)
+		sigArr = append(sigArr, myChan)
+	} else {
 		errorLog = os.Stderr
 	}
 
 	if accessLogFile != "" {
-		accessLog, err = os.OpenFile(accessLogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
-		if err != nil {
-			errorLog = nil
+		accessLog := &lumberjack.Logger{
+			Filename:   accessLogFile,
+			MaxBackups: 5,
 		}
-	}
-	if accessLog == nil {
-		accessLog = os.Stdout
+		myChan := make(chan os.Signal)
+
+		go RotateLog(accessLog, myChan, done)
+		sigArr = append(sigArr, myChan)
+	} else {
+		errorLog = os.Stdout
 	}
 
-	logger := log.New(os.Stderr, "", log.LstdFlags|log.LUTC|log.Lshortfile)
+	go BroadcastSignal(sigUsr, sigArr, done)
+
+	logger := log.New(errorLog, "", log.LstdFlags|log.LUTC|log.Lshortfile)
 	mux := moxxiConf.CreateMux(handlers, logger)
 
 	var errChan chan error
