@@ -1,5 +1,7 @@
 {
   "baseURL": "parentdomain.com",
+  "accessLog": "./access_log",
+  "errorLog": "./errro_log",
   "confPath": ".",
   "confExt": ".conf",
   "excludes": [

@@ -49,6 +49,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Printf("errorLog - %s - accessLog - %s", errorLogFile, accessLogFile)
 	sigUsr := make(chan os.Signal, 1)
 
 	done := make(chan struct{})
@@ -59,30 +60,34 @@ func main() {
 
 	var errorLog, accessLog io.Writer
 	if errorLogFile != "" {
-		errorLog := &lumberjack.Logger{
+		intLogger := &lumberjack.Logger{
 			Filename:   errorLogFile,
 			MaxBackups: 5,
 		}
 		myChan := make(chan os.Signal)
 
-		go RotateLog(errorLog, myChan, done)
+		go RotateLog(intLogger, myChan, done)
 		sigArr = append(sigArr, myChan)
+		errorLog = intLogger
 	} else {
 		errorLog = os.Stderr
 	}
 
 	if accessLogFile != "" {
-		accessLog := &lumberjack.Logger{
+		intLogger := &lumberjack.Logger{
 			Filename:   accessLogFile,
 			MaxBackups: 5,
 		}
 		myChan := make(chan os.Signal)
 
-		go RotateLog(accessLog, myChan, done)
+		go RotateLog(intLogger, myChan, done)
 		sigArr = append(sigArr, myChan)
+		accessLog = intLogger
 	} else {
 		errorLog = os.Stdout
 	}
+
+	fmt.Printf("errorLog - %#v - accessLog - %#v", errorLog, accessLog)
 
 	go BroadcastSignal(sigUsr, sigArr, done)
 
