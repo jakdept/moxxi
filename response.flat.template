@@ -1,9 +1,9 @@
-{{ define "tStart" -}}
+{{ define "start" -}}
 This is your response to your JSON request
 
 {{ end }}
 
-{{ define "tBody" -}}
+{{ define "body" -}}
 	{{- with . -}}
 		{{- with .Error -}}
 		!!
@@ -33,26 +33,26 @@ This is your response to your JSON request
 			{{- end -}}
 		{{- end -}}
 	{{- "\t" -}}
-		{{- with .ErrorString -}}
+		{{- with .Error -}}
 			{{- . -}}
 		{{- end -}}
 	{{- "\n" -}}
 	{{- end -}}
 {{- end }}
 
-{{ define "tEnd" }}
+{{ define "end" }}
 
 That's all folks!
-{{- end }}
-
-{{ define "tAll" }}
-	{{ template "tStart" }}
-	{{ with . }}
-		{{ range . }}
-			{{ template "tBody" . }}
-		{{ end }}
-	{{ end }}
-	{{ template "tEnd" }}
 {{ end }}
 
-{{ template "tAll" . }}
+{{ define "all" }}
+	{{ template "start" }}
+	{{ with . }}
+		{{ range . }}
+			{{ template "body" . }}
+		{{ end }}
+	{{ end }}
+	{{ template "end" }}
+{{ end }}
+
+{{ template "all" . }}
