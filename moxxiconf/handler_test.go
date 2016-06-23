@@ -15,6 +15,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestStaticHandler(t *testing.T) {
+	// test setup
+	expected := []byte(`this is the response I expect to recieve`)
+
+	file, err := ioutil.TempFile(os.TempDir(), "moxxi_test_")
+	assert.Nil(t, err, "could no open temp file for writing - %v", err)
+
+	_, err = file.Write(expected)
+	assert.Nil(t, err, "could no open temp file for writing - %v", err)
+
+	server := httptest.NewServer(StaticHandler(HandlerConfig{resFile: file.Name()},
+		log.New(os.Stdout, "", log.LstdFlags)))
+	defer server.Close()
+
+	for i := 0; i < 10; i++ {
+		resp, err := http.Get(server.URL)
+		assert.Nil(t, err, "got a bad response from the server - %v", err)
+
+		actual, err := ioutil.ReadAll(resp.Body)
+		assert.Nil(t, err, "got an error reading the body of the response - %v", err)
+
+		assert.Equal(t, expected, actual, "test #%d - got a different response than expected", i)
+	}
+}
+
 func TestFormHandler_POST(t *testing.T) {
 
 	// test setup
@@ -123,30 +148,5 @@ func TestFormHandler_POST(t *testing.T) {
 				"test %d - response and expected response did not match", id)
 		}
 		resp.Body.Close()
-	}
-}
-
-func TestStaticHandler(t *testing.T) {
-	// test setup
-	expected := []byte(`this is the response I expect to recieve`)
-
-	file, err := ioutil.TempFile(os.TempDir(), "moxxi_test_")
-	assert.Nil(t, err, "could no open temp file for writing - %v", err)
-
-	_, err = file.Write(expected)
-	assert.Nil(t, err, "could no open temp file for writing - %v", err)
-
-	server := httptest.NewServer(StaticHandler(HandlerConfig{resFile: file.Name()},
-		log.New(os.Stdout, "", log.LstdFlags)))
-	defer server.Close()
-
-	for i := 0; i < 10; i++ {
-		resp, err := http.Get(server.URL)
-		assert.Nil(t, err, "got a bad response from the server - %v", err)
-
-		actual, err := ioutil.ReadAll(resp.Body)
-		assert.Nil(t, err, "got an error reading the body of the response - %v", err)
-
-		assert.Equal(t, expected, actual, "test #%d - got a different response than expected", i)
 	}
 }
