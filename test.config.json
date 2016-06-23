@@ -1,0 +1,32 @@
+{
+  "baseURL": "parentdomain.com",
+  "confPath": ".",
+  "confExt": ".conf",
+  "excludes": [
+    "moxxi",
+    "backend",
+    "secure",
+    "status"
+  ],
+  "confFile": "./proxy.template",
+  "resFile": "./response.template",
+  "subdomainLen": 8,
+  "listen": [
+    "localhost:8080"
+  ],
+  "handler": [
+    {
+      "handlerType": "static",
+      "handlerRoute": "/",
+      "resFile": "./simple_form.html"
+    },
+    {
+      "handlerType": "form",
+      "handlerRoute": "/submit"
+    },
+    {
+      "handlerType": "json",
+      "handlerRoute": "/json"
+    }
+  ]
+}

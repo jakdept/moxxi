@@ -34,6 +34,7 @@ func prepConfig() (*map[string]interface{}, Err) {
 		"/etc/moxxi/config.json",
 		"$HOME/.moxxi/config.json",
 		"./moxxi.config.json",
+		"./test.config.json",
 	}
 
 	var data []byte
