@@ -1,6 +1,7 @@
 package moxxiConf
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -122,11 +124,7 @@ func TestFormHandler_POST(t *testing.T) {
 	for id, test := range testData {
 		params := url.Values(test.reqParams)
 		resp, err := http.PostForm(server.URL, params)
-
-		// req, err := http.NewRequest(test.reqMethod, server.URL,
-		// 	strings.NewReader(params.Encode()))
-
-		// resp, err := client.Do(req)
+		assert.NoError(t, err, "test %d - got an error I should not have when running the request", id)
 
 		assert.Equal(t, test.resCode, resp.StatusCode,
 			"test %d - got the wrong response code", id)
@@ -146,6 +144,93 @@ func TestFormHandler_POST(t *testing.T) {
 		} else {
 			assert.Equal(t, string(body), test.fileOut,
 				"test %d - response and expected response did not match", id)
+		}
+		resp.Body.Close()
+	}
+}
+
+func TestJSONHandler_POST(t *testing.T) {
+
+	// test setup
+	testConfig := HandlerConfig{
+		baseURL:      "test.com",
+		confPath:     os.TempDir(),
+		confExt:      ".testout",
+		exclude:      []string{"a", "b", "c"},
+		subdomainLen: 8,
+	}
+
+	confTemplVal := "{{.IntHost}} {{.IntIP}} {{.IntPort}} {{.Encrypted}}"
+	confTemplVal += " {{ range .StripHeaders }}{{.}} {{end}}"
+
+	testConfig.confTempl = template.Must(template.New("testing").Parse(confTemplVal))
+
+	resTemplVal := "{{range .}}{{ .ExtHost }}\n{{ end }}"
+	testConfig.resTempl = template.Must(template.New("testing").Parse(resTemplVal))
+
+	server := httptest.NewServer(FormHandler(testConfig,
+		log.New(os.Stdout, "", log.LstdFlags)))
+	defer server.Close()
+
+	var testData = []struct {
+		// reqMethod string
+		reqBody string
+		resCode int
+		fileOut []string
+	}{
+		{
+			reqBody: `{	"IntHost": "proxied.com", "IntIP": "10.10.10.10", "IntPort": 80,
+				"Encrypted": true, "StripHeaders": [	"KeepAlive", "b", "c" ]}`,
+			resCode: 200,
+			fileOut: []string{
+				`proxied.com 10.10.10.10 80 true KeepAlive b c `,
+			},
+		},
+	}
+
+	for id, test := range testData {
+		resp, err := http.Post(server.URL, "application/json", strings.NewReader(test.reqBody))
+		assert.NoError(t, err, "test %d - got an error I should not have when running the request", id)
+
+		assert.Equal(t, test.resCode, resp.StatusCode,
+			"test %d - got the wrong response code", id)
+
+		if resp.StatusCode == 200 {
+			allFiles := test.fileOut
+
+			s := bufio.NewScanner(resp.Body)
+			for s.Scan() {
+				fileName := strings.TrimSpace(s.Text())
+				contents, err := ioutil.ReadFile(
+					fmt.Sprintf("%s/%s%s",
+						testConfig.confPath,
+						fileName,
+						testConfig.confExt))
+
+				assert.NoError(t, err, "test %d - problem reading file [%s] - %v", id, fileName, err)
+
+				var found bool
+				for i := 0; i < len(allFiles); i++ {
+					if allFiles[i] == string(contents) {
+						if i < len(allFiles)-1 {
+							allFiles = append(allFiles[:i], allFiles[i+1:]...)
+							found = true
+							break
+						} else {
+							allFiles = allFiles[:i]
+							found = true
+							break
+						}
+					}
+				}
+				if !found {
+					assert.Fail(t, "test %d - response not expected - opened file [%s]", id, fileName)
+				}
+			}
+
+			if len(allFiles) > 0 {
+				assert.Fail(t, "test %d - had results left over that were not found\n%v", id, allFiles)
+			}
 		}
 		resp.Body.Close()
 	}
