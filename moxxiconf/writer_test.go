@@ -3,6 +3,7 @@ package moxxiConf
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"testing"
@@ -168,6 +169,7 @@ func TestConfCheck(t *testing.T) {
 
 	for id, test := range testData {
 		if testing.Short() && test.confIn.redirectTracing {
+			log.Printf("skipping test %d because of redirect tracing", id)
 			continue
 		}
 		eachOut, eachErr := confCheck(test.siteIn, test.confIn)
@@ -404,7 +406,7 @@ func TestParseIPList_BadFile(t *testing.T) {
 
 func TestRedirectTrace(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skipf("skipping RedirectTracing tests in case of no internet")
 	}
 	var testData = []struct {
 		hostIn  string
