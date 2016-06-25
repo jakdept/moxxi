@@ -28,7 +28,7 @@ This is your response to your JSON request
 		{{- end -}}
 	{{- "\t" -}}
 		{{- with .StripHeaders -}}
-			{{- range .StripHeaders -}}
+			{{- range . -}}
 				{{- . -}}
 			{{- end -}}
 		{{- end -}}
