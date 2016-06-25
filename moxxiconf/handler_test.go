@@ -165,10 +165,13 @@ func TestJSONHandler_POST(t *testing.T) {
 
 	testConfig.confTempl = template.Must(template.New("testing").Parse(confTemplVal))
 
-	resTemplVal := "{{range .}}{{ .ExtHost }}\n{{ end }}"
+	resTemplVal := `{{ define "start" }}{{ end }}
+	{{define "body" }}{{ .ExtHost }}
+	{{ end }}
+	{{ define "end" }}{{ end }}"`
 	testConfig.resTempl = template.Must(template.New("testing").Parse(resTemplVal))
 
-	server := httptest.NewServer(FormHandler(testConfig,
+	server := httptest.NewServer(JSONHandler(testConfig,
 		log.New(os.Stdout, "", log.LstdFlags)))
 	defer server.Close()
 
@@ -201,6 +204,10 @@ func TestJSONHandler_POST(t *testing.T) {
 			s := bufio.NewScanner(resp.Body)
 			for s.Scan() {
 				fileName := strings.TrimSpace(s.Text())
+				log.Println(fileName)
+				if fileName == "" {
+					continue
+				}
 				contents, err := ioutil.ReadFile(
 					fmt.Sprintf("%s/%s%s",
 						testConfig.confPath,

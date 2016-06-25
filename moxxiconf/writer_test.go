@@ -167,6 +167,9 @@ func TestConfCheck(t *testing.T) {
 	}
 
 	for id, test := range testData {
+		if testing.Short() && test.confIn.redirectTracing {
+			continue
+		}
 		eachOut, eachErr := confCheck(test.siteIn, test.confIn)
 		assert.Equal(t, test.siteOut, eachOut, "test %d - test mismatch", id)
 		if test.errOut == nil {
@@ -400,6 +403,9 @@ func TestParseIPList_BadFile(t *testing.T) {
 }
 
 func TestRedirectTrace(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	var testData = []struct {
 		hostIn  string
 		portIn  int
