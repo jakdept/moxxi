@@ -32,11 +32,12 @@ type siteParams struct {
 	IntPort      int
 	Encrypted    bool
 	StripHeaders []string
+	Error        string
 }
 
 var isNotAlphaNum *regexp.Regexp
 
-func init() {
+func iit() {
 	isNotAlphaNum = regexp.MustCompile("[^a-zA-Z0-9]")
 }
 

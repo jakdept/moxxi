@@ -45,7 +45,7 @@
 					{{ end}}
 				</td>
 				{{ end }}
-				{{ with .myError }}
+				{{ with .Error }}
 				<td>
 					{{ . }}
 				</td>
