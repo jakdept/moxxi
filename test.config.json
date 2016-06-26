@@ -28,7 +28,8 @@
     },
     {
       "handlerType": "json",
-      "handlerRoute": "/json"
+      "handlerRoute": "/json",
+      "resFile": "./response.flat.template"
     }
   ]
 }
