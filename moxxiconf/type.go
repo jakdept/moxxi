@@ -37,7 +37,7 @@ type siteParams struct {
 
 var isNotAlphaNum *regexp.Regexp
 
-func iit() {
+func init() {
 	isNotAlphaNum = regexp.MustCompile("[^a-zA-Z0-9]")
 }
 

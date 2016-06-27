@@ -125,6 +125,9 @@ func TestFormHandler_POST(t *testing.T) {
 		params := url.Values(test.reqParams)
 		resp, err := http.PostForm(server.URL, params)
 		assert.NoError(t, err, "test %d - got an error I should not have when running the request", id)
+		if err != nil {
+			continue
+		}
 
 		assert.Equal(t, test.resCode, resp.StatusCode,
 			"test %d - got the wrong response code", id)
@@ -145,7 +148,7 @@ func TestFormHandler_POST(t *testing.T) {
 			assert.Equal(t, string(body), test.fileOut,
 				"test %d - response and expected response did not match", id)
 		}
-		resp.Body.Close()
+		// resp.Body.Close()
 	}
 }
 
@@ -194,6 +197,9 @@ func TestJSONHandler_POST(t *testing.T) {
 	for id, test := range testData {
 		resp, err := http.Post(server.URL, "application/json", strings.NewReader(test.reqBody))
 		assert.NoError(t, err, "test %d - got an error I should not have when running the request", id)
+		if err != nil {
+			continue
+		}
 
 		assert.Equal(t, test.resCode, resp.StatusCode,
 			"test %d - got the wrong response code", id)

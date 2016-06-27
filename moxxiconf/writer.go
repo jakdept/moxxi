@@ -31,8 +31,10 @@ func validHost(s string) string {
 	}
 	for i := 0; i < len(parts)-1; {
 		switch {
-		case len(parts[i]) < 1:
+		case i < len(parts)-2 && len(parts[i]) < 1:
 			parts = append(parts[:i], parts[i+1:]...)
+		case len(parts[i]) < 1:
+			parts = parts[:i]
 		case isNotAlphaNum.MatchString(parts[i]):
 			return ""
 		default:

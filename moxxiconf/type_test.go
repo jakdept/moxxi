@@ -1,8 +1,9 @@
 package moxxiConf
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHandlerLocFlag(t *testing.T) {
@@ -36,5 +37,32 @@ func TestHandlerLocFlag(t *testing.T) {
 	assert.Equal(t, "", junkTest.String(), "should be empty")
 	junkTest.Set("/some/real/junk")
 	assert.Equal(t, "/some/real/junk", junkTest.String(), "should be empty")
+
+}
+
+func TestIsNotAlphaNum(t *testing.T) {
+	testData := []struct {
+		in  string
+		out bool
+	}{
+		{
+			in:  "abcde",
+			out: false,
+		}, {
+			in:  "12345",
+			out: false,
+		}, {
+			in:  "abcd123",
+			out: false,
+		}, {
+			in:  "a$c&1^3",
+			out: true,
+		},
+	}
+
+	for id, each := range testData {
+		assert.Equal(t, each.out, isNotAlphaNum.MatchString(each.in),
+			"test #%d - results did not match expected - input %s", id, each.in)
+	}
 
 }
