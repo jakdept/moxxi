@@ -28,7 +28,7 @@ func TestStaticHandler(t *testing.T) {
 	assert.Nil(t, err, "could no open temp file for writing - %v", err)
 
 	server := httptest.NewServer(StaticHandler(HandlerConfig{resFile: file.Name()},
-		log.New(os.Stdout, "", log.LstdFlags)))
+		log.New(ioutil.Discard, "", log.LstdFlags)))
 	defer server.Close()
 
 	for i := 0; i < 10; i++ {
@@ -62,7 +62,7 @@ func TestFormHandler_POST(t *testing.T) {
 	testConfig.resTempl = template.Must(template.New("testing").Parse(resTemplVal))
 
 	server := httptest.NewServer(FormHandler(testConfig,
-		log.New(os.Stdout, "", log.LstdFlags)))
+		log.New(ioutil.Discard, "", log.LstdFlags)))
 	defer server.Close()
 
 	var testData = []struct {
@@ -175,7 +175,7 @@ func TestJSONHandler_POST(t *testing.T) {
 	testConfig.resTempl = template.Must(template.New("testing").Parse(resTemplVal))
 
 	server := httptest.NewServer(JSONHandler(testConfig,
-		log.New(os.Stdout, "", log.LstdFlags)))
+		log.New(ioutil.Discard, "", log.LstdFlags)))
 	defer server.Close()
 
 	var testData = []struct {
@@ -210,7 +210,6 @@ func TestJSONHandler_POST(t *testing.T) {
 			s := bufio.NewScanner(resp.Body)
 			for s.Scan() {
 				fileName := strings.TrimSpace(s.Text())
-				log.Println(fileName)
 				if fileName == "" {
 					continue
 				}

@@ -27,7 +27,6 @@ func CreateMux(handlers []HandlerConfig, l *log.Logger) *http.ServeMux {
 // FormHandler - creates and returns a Handler for both Query and Form requests
 func FormHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 	confWriter := confWrite(config)
-	// log.Printf("\n%#v\n", config)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -39,7 +38,7 @@ func FormHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 		if r.Form.Get("host") == "" {
 			pkgErr := &NewErr{Code: ErrNoHostname}
 			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
-			log.Println(pkgErr.LogError(r))
+			l.Println(pkgErr.LogError(r))
 			return
 		}
 		host := r.Form.Get("host")
@@ -47,7 +46,7 @@ func FormHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 		if r.Form.Get("ip") == "" {
 			pkgErr := &NewErr{Code: ErrNoIP}
 			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
-			log.Println(pkgErr.LogError(r))
+			l.Println(pkgErr.LogError(r))
 			return
 		}
 
@@ -69,19 +68,19 @@ func FormHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 		vhost, pkgErr := confCheck(vhost, config)
 		if pkgErr != nil {
 			http.Error(w, pkgErr.Error(), http.StatusPreconditionFailed)
-			log.Println(pkgErr.LogError(r))
+			l.Println(pkgErr.LogError(r))
 			return
 		}
 
 		if vhost, pkgErr = confWriter(vhost); pkgErr != nil {
 			http.Error(w, pkgErr.Error(), http.StatusInternalServerError)
-			log.Println(pkgErr.LogError(r))
+			l.Println(pkgErr.LogError(r))
 			return
 		}
 
 		if extErr := config.resTempl.Execute(w, []siteParams{vhost}); extErr != nil {
 			http.Error(w, extErr.Error(), http.StatusInternalServerError)
-			log.Println(extErr.Error())
+			l.Println(extErr.Error())
 			return
 		}
 		return
@@ -157,13 +156,13 @@ func JSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 			}
 
 			if err != nil {
-				log.Println(err.LogError(r))
+				l.Println(err.LogError(r))
 				vPlus.Error = err.Error()
 			}
 
 			if err := tBody.Execute(w, vPlus); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
-				log.Println(err.Error())
+				l.Println(err.Error())
 				return
 			}
 		}
@@ -175,7 +174,7 @@ func JSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 func StaticHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 	res, err := ioutil.ReadFile(config.resFile)
 	if err != nil {
-		log.Printf("bad static response file %s - %v", config.resFile, err)
+		l.Printf("bad static response file %s - %v", config.resFile, err)
 		return InvalidHandler("no data", http.StatusInternalServerError)
 	}
 
