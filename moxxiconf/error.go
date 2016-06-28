@@ -47,28 +47,21 @@ func (e NewErr) LogError(r *http.Request) string {
 	ts := time.Now()
 	switch {
 	case e.Code == ErrUpgradedError && e.value == "":
-		return fmt.Sprintf("%s %s",
-			ts.Format("02-Jan-2006:15:04:05-0700"),
-			errMsg[e.Code])
+		return errMsg[e.Code]
 	case e.deepErr == nil && e.value == "":
-		return fmt.Sprintf("%s %s",
-			ts.Format("02-Jan-2006:15:04:05-0700"),
-			errMsg[e.Code])
+		return 	errMsg[e.Code])
 	case e.deepErr == nil && e.value != "":
-		return fmt.Sprintf("%s %s %s "+errMsg[e.Code],
-			ts.Format("02-Jan-2006:15:04:05-0700"),
+		return fmt.Sprintf("%s %s "+errMsg[e.Code],
 			r.RemoteAddr,
 			r.RequestURI,
 			e.value)
 	case e.deepErr != nil && e.value == "":
-		return fmt.Sprintf("%s %s %s "+errMsg[e.Code],
-			ts.Format("02-Jan-2006:15:04:05-0700"),
+		return fmt.Sprintf("%s %s "+errMsg[e.Code],
 			r.RemoteAddr,
 			r.RequestURI,
 			e.deepErr)
 	default:
-		return fmt.Sprintf("%s %s %s "+errMsg[e.Code],
-			ts.Format("02-Jan-2006:15:04:05-0700"),
+		return fmt.Sprintf("%s %s "+errMsg[e.Code],
 			r.RemoteAddr,
 			r.RequestURI,
 			e.value,
