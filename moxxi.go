@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -20,7 +19,6 @@ func BroadcastSignal(in chan os.Signal, out []chan os.Signal, done chan struct{}
 	for {
 		select {
 		case val = <-in:
-			fmt.Println("got a usr1")
 			for _, each := range out {
 				each <- val
 			}
@@ -49,7 +47,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("errorLog - %s - accessLog - %s", errorLogFile, accessLogFile)
 	sigUsr := make(chan os.Signal, 1)
 
 	done := make(chan struct{})
@@ -87,8 +84,6 @@ func main() {
 		errorLog = os.Stdout
 	}
 
-	fmt.Printf("errorLog - %#v - accessLog - %#v", errorLog, accessLog)
-
 	go BroadcastSignal(sigUsr, sigArr, done)
 
 	logger := log.New(errorLog, "", log.LstdFlags|log.LUTC|log.Lshortfile)
@@ -105,6 +100,7 @@ func main() {
 		}
 
 		go func() {
+			logger.Printf("started server on %s\n", singleListener)
 			errChan <- srv.ListenAndServe()
 		}()
 	}
