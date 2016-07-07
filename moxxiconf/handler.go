@@ -134,8 +134,14 @@ func JSONHandler(config HandlerConfig, l *log.Logger) http.HandlerFunc {
 			}
 
 			v, err := confCheck(v, config)
-			if err == nil || err.GetCode() == ErrBadHostnameTrace {
+			if err == nil {
 				v, err = confWriter(v)
+			} else if err.GetCode() == ErrBadHostnameTrace {
+				var newErr Error
+				v, newErr = confWriter(v)
+				if newErr != nil {
+					err = newErr
+				}
 			}
 
 			var vPlus = struct {
