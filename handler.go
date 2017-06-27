@@ -9,32 +9,40 @@ import (
 )
 
 type rewriteProxy struct {
-	strConvertUp   *strings.Replacer
-	strConvertDown *strings.Replacer
-	client         *http.Client
-	replacer       Replacer
-	downDomain     string // the downstream domain
-	upDomain       string // the upstream domain
-	upPort         int
-	upTLSPort      int
-	upIP           net.IP
+	client   *http.Client
+	replacer Replacer
+	down     string // the downstream domain
+	up       string // the upstream domain
+	port     int
+	portTLS  int
+	IP       net.IP
 }
 
 func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var childHeader http.Header
-	h.headerRewrite(&r.Header, &childHeader, strings.NewReplacer(h.downDomain, h.upDomain))
-	var errChan chan error
+	defer func() {
+		if err, ok := recover().(error); ok && err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}()
 
-	childRequest := http.Request{
-		Method: r.Method,
-		URL:    r.URL,
-		Header: childHeader,
-		Body:   h.replacer.RewriteRequest(r.Body, errChan),
-		Host:   h.upDomain,
+	// does not currently handle other ports
+	r.URL.Host = h.up
+	childRequest, err := http.NewRequest(r.Method, r.URL.String(), h.replacer.RewriteRequest(r.Body))
+	if err != nil {
+		panic(err)
 	}
-	client := &http.Client{}
-	_, _ = client, childRequest
 
+	h.headerRewrite(&r.Header, &childRequest.Header, strings.NewReplacer(h.down, h.up))
+	client := &http.Client{}
+	resp, err := client.Do(childRequest)
+	if err != nil {
+		panic(err)
+	}
+
+	h.replacer.Reverse()
+	writeHeader := w.Header()
+	h.headerRewrite(&resp.Header, &writeHeader, strings.NewReplacer(h.up, h.down))
+	h.replacer.RewriteResponse(resp.Body, w)
 }
 
 func (h *rewriteProxy) headerRewrite(in, out *http.Header, mod *strings.Replacer) {
@@ -48,6 +56,8 @@ func (h *rewriteProxy) headerRewrite(in, out *http.Header, mod *strings.Replacer
 // Replacer allows you to rewrite content, replacing old with new. It carries
 // multiple methods to do replacement, but mostly works from an io.Reader to an
 // io.Writer.
+//
+// THESE METHODS MAY PANIC.
 type Replacer struct {
 	old, new []byte
 }
@@ -57,7 +67,7 @@ func (h *Replacer) Reverse() {
 	h.old, h.new = h.new, h.old
 }
 
-func (h *Replacer) replace(in io.Reader, out io.Writer) error {
+func (h *Replacer) replace(in io.Reader, out io.Writer) {
 	// allocate a 16M buffer
 	chunkSize := 1 >> 10
 	var byteCount int
@@ -71,7 +81,7 @@ func (h *Replacer) replace(in io.Reader, out io.Writer) error {
 			byteCount, err = in.Read(buffer)
 			if err != nil && err != io.EOF {
 				// bail out with the error
-				return err
+				panic(err)
 			}
 			// do replacements
 			buffer = append(buffer[:byteCount],
@@ -85,7 +95,7 @@ func (h *Replacer) replace(in io.Reader, out io.Writer) error {
 		// write some of the data out
 		byteCount, err = out.Write(buffer[:len(buffer)-chunkSize])
 		if err != nil {
-			return err
+			panic(err)
 		}
 		buffer = buffer[byteCount:]
 	}
@@ -93,34 +103,23 @@ func (h *Replacer) replace(in io.Reader, out io.Writer) error {
 	for len(buffer) > 0 {
 		byteCount, err = out.Write(buffer)
 		if err != nil {
-			return err
+			panic(err)
 		}
 		buffer = buffer[byteCount:]
 	}
-	return nil
 }
 
 // RewriteRequest rewrites the request from old to new. It expects to run in a thread concurrently.
 // If there are any errors, they will be returned via the error channel.
-func (h *Replacer) RewriteRequest(in io.ReadCloser, errChan chan<- error) io.ReadCloser {
+func (h *Replacer) RewriteRequest(in io.ReadCloser) io.ReadCloser {
 	pipeReader, pipeWriter := io.Pipe()
 	// make sure you close the input
 	defer in.Close()
-	go func() {
-		err := h.replace(in, pipeWriter)
-		if err != nil {
-			errChan <- err
-		}
-	}()
+	go h.replace(in, pipeWriter)
 	return pipeReader
 }
 
-func (h *Replacer) RewriteResponse(in io.ReadCloser, out io.Writer, errChan chan<- error) {
+func (h *Replacer) RewriteResponse(in io.ReadCloser, out io.Writer) {
 	defer in.Close()
-	go func() {
-		err := h.replace(in, out)
-		if err != nil {
-			errChan <- err
-		}
-	}()
+	go h.replace(in, out)
 }
