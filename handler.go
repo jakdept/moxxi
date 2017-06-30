@@ -2,7 +2,10 @@ package moxxi
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -60,6 +63,7 @@ func (h *rewriteProxy) headerRewrite(in, out *http.Header, mod *strings.Replacer
 // THESE METHODS MAY PANIC.
 type Replacer struct {
 	old, new []byte
+	memUsage int
 }
 
 // Reverse reverses old with the new in the Replacer.
@@ -68,44 +72,71 @@ func (h *Replacer) Reverse() {
 }
 
 func (h *Replacer) replace(in io.Reader, out io.Writer) {
-	// allocate a 16M buffer
-	chunkSize := 1 >> 10
-	var byteCount int
-
-	buffer := make([]byte, 1>>20)
-	var err error
-
-	for {
-		if len(buffer) < chunkSize {
-			// the buffer is not full, so read in to fill it
-			byteCount, err = in.Read(buffer)
-			if err != nil && err != io.EOF {
-				// bail out with the error
-				panic(err)
-			}
-			// do replacements
-			buffer = append(buffer[:byteCount],
-				bytes.Replace(buffer[byteCount:], h.old, h.new, -1)...)
-			if err == io.EOF {
-				// break out and write the rest
-				break
-			}
-			continue
-		}
-		// write some of the data out
-		byteCount, err = out.Write(buffer[:len(buffer)-chunkSize])
-		if err != nil {
-			panic(err)
-		}
-		buffer = buffer[byteCount:]
+	if h.memUsage < 1 {
+		h.memUsage = 1 << 20
+	}
+	if h.memUsage < 3*(len(h.old)+10) {
+		panic(errors.New("not enough memory allocated for memory slice"))
 	}
 
-	for len(buffer) > 0 {
-		byteCount, err = out.Write(buffer)
-		if err != nil {
+	type pair struct {
+		l int
+		r int
+	}
+
+	var err error
+	var work pair
+	var byteCount, next int
+
+	data := make([]byte, h.memUsage)
+	// cheat the first copy
+
+	work.l = len(data)
+
+	log.Printf("preflight l: %d r: %d n: %d data: %d/%d\n\n",
+		work.l, work.r, next, len(data), cap(data))
+
+	for {
+		byteCount = copy(data, data[work.l:])
+		work.r, err = in.Read(data[byteCount:])
+		work.r += byteCount
+		work.l = 0
+		if err == io.EOF {
+			break
+		} else if err != nil {
 			panic(err)
 		}
-		buffer = buffer[byteCount:]
+		// as long as there is enough room left to eat another chunk
+		for work.l+len(h.old)+10 < work.r {
+			fmt.Printf("writing loop - l: %d len: %d r: %d\n\n",
+				work.l, len(h.old), work.r)
+			if next = bytes.Index(data[work.l:work.r], h.old); next < 0 {
+				next = work.r - len(h.old) - 10
+				h.wholeWriter(out, data[work.l:next])
+				work.l = next
+				break
+			}
+			next += work.l
+			h.wholeWriter(out, data[work.l:next])
+			work.l = next + len(h.old)
+			h.wholeWriter(out, h.new)
+		}
+	}
+
+	fmt.Printf("l: %d r: %d remaining [%q]\n\n", work.l, work.r, data[work.l:work.r])
+
+	h.wholeWriter(out, bytes.Replace(data[work.l:work.r], h.old, h.new, -1))
+}
+
+func (h *Replacer) wholeWriter(out io.Writer, data []byte) {
+	fmt.Printf("writing - [%q]\n\n", data)
+	var bc, w int
+	var err error
+	for w < len(data) {
+		if bc, err = out.Write(data[w:]); err != nil {
+			panic(err)
+		}
+		w += bc
 	}
 }
 
