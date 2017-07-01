@@ -2,7 +2,9 @@ package moxxi
 
 import (
 	"errors"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 
 	"bytes"
@@ -13,6 +15,53 @@ import (
 
 func init() {
 	goldie.FixtureDir = "testdata"
+}
+
+func TestHeaderRewrite(t *testing.T) {
+	t.Parallel()
+	testdata := http.Header{
+		"Date":              []string{"Sat, 01 Jul 2017 21:17:52 GMT"},
+		"Expires":           []string{"-1"},
+		"Cache-Control":     []string{"private, max-age=0"},
+		"text-Control":      []string{"public, max-age=100"},
+		"Content-Type":      []string{"text/html; charset=ISO-8859-1"},
+		"P3P":               []string{"CP=\"This is not a text policy!"},
+		"Server":            []string{"gws"},
+		"X-XSS-Protection":  []string{"1; mode=block"},
+		"X-Frame-Options":   []string{"SAMEORIGIN"},
+		"Alt-Svc":           []string{"quic=\":443\"; ma=2592000; v=\"39,38,37,36,35\""},
+		"Transfer-Encoding": []string{"chunked"},
+		"text-encoding":     []string{"chunked"},
+		"Accept-Ranges":     []string{"text"},
+		"Vary":              []string{"Accept-Encoding"},
+	}
+
+	expected := http.Header{
+		"Date":              []string{"Sat, 01 Jul 2017 21:17:52 GMT"},
+		"Expires":           []string{"-1"},
+		"Cache-Control":     []string{"private, max-age=0"},
+		"Poop-Control":      []string{"public, max-age=100"},
+		"Content-Type":      []string{"poop/html; charset=ISO-8859-1"},
+		"P3p":               []string{"CP=\"This is not a poop policy!"},
+		"Server":            []string{"gws"},
+		"X-Xss-Protection":  []string{"1; mode=block"},
+		"X-Frame-Options":   []string{"SAMEORIGIN"},
+		"Alt-Svc":           []string{"quic=\":443\"; ma=2592000; v=\"39,38,37,36,35\""},
+		"Transfer-Encoding": []string{"chunked"},
+		"Poop-Encoding":     []string{"chunked"},
+		"Accept-Ranges":     []string{"poop"},
+		"Vary":              []string{"Accept-Encoding"},
+	}
+
+	h := rewriteProxy{}
+	result := http.Header{}
+
+	replacer := strings.NewReplacer("text", "poop")
+	h.headerRewrite(&testdata, &result, replacer)
+
+	for name, contents := range result {
+		assert.Equal(t, expected[name], contents, "key was %s", name)
+	}
 }
 
 func TestReplacerVanilla(t *testing.T) {
