@@ -3,7 +3,6 @@ package moxxi
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -87,67 +86,49 @@ func (h *Replacer) replace(in io.Reader, out io.Writer) {
 	var work pair
 	var byteCount, next int
 
+	// the maximum size (in bytes) of a single utf8 char allowing a bit of grace
+	bit := 10
+
 	data := make([]byte, h.memUsage)
 	// cheat the first copy
 
 	work.l = len(data)
 	work.r = len(data)
 
-	fmt.Printf("preflight l: %d r: %d n: %d data: %d/%d\n\n",
-		work.l, work.r, next, len(data), cap(data))
-
 	for {
-		fmt.Printf("\ntop of loop l: %d r: %d n: %d bc: %d data: %d/%d\n[%q]\n",
-			work.l, work.r, next, byteCount, len(data), cap(data), data)
-
 		byteCount = copy(data, data[work.l:work.r])
-		fmt.Printf("post-copy l: %d r: %d n: %d bc: %d data: %d/%d\n[%q]\n",
-			work.l, work.r, next, byteCount, len(data), cap(data), data)
 
 		// my problem is that i'm not bounding the copy slice below
 		// if i drop work.r into it, i might have a shrinking buffer on short reads?
 		work.r, err = in.Read(data[byteCount:])
 		work.r += byteCount
-		fmt.Printf("post-read l: %d r: %d n: %d bc: %d data: %d/%d\n[%q]\n",
-			work.l, work.r, next, byteCount, len(data), cap(data), data)
 
 		work.l = 0
-		fmt.Printf("\terr: [%v] current working: [%q]\n", err, data[work.l:work.r])
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			panic(err)
 		}
 		// as long as there is enough room left to eat another chunk
-		for work.l+len(h.old)+10 < work.r {
-			fmt.Printf("writing loop l: %d r: %d n: %d bc: %d data: %d/%d\n[%q]\n",
-				work.l, work.r, next, byteCount, len(data), cap(data), data)
+		for work.l+len(h.old)+bit < work.r {
+			// if there is no next chunk, write out everything but one full replacement
 			if next = bytes.Index(data[work.l:work.r], h.old); next < 0 {
-				fmt.Printf("missed index l: %d r: %d n: %d bc: %d data: %d/%d\n[%q]\n",
-					work.l, work.r, next, byteCount, len(data), cap(data), data)
-
-				next = work.r - len(h.old) - 10
+				next = work.r - len(h.old) - bit
 				h.wholeWriter(out, data[work.l:next])
 				work.l = next
 				break
 			}
 			next += work.l
-			fmt.Printf("hit l: %d r: %d n: %d bc: %d data: %d/%d\n[%q]\"",
-				work.l, work.r, next, byteCount, len(data), cap(data), data)
 			h.wholeWriter(out, data[work.l:next])
 			work.l = next + len(h.old)
 			h.wholeWriter(out, h.new)
 		}
 	}
 
-	fmt.Printf("\nremaining l: %d r: %d n: %d bc: %d data: %d/%d\n[%q]\n",
-		work.l, work.r, next, byteCount, len(data), cap(data), data)
-
 	h.wholeWriter(out, bytes.Replace(data[work.l:work.r], h.old, h.new, -1))
 }
 
 func (h *Replacer) wholeWriter(out io.Writer, data []byte) {
-	fmt.Printf("writing - [%q]\n", data)
 	var bc, w int
 	var err error
 	for w < len(data) {
