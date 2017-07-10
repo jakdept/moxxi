@@ -2,19 +2,131 @@ package moxxi
 
 import (
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
 	"bytes"
 
+	"github.com/jakdept/moxxi/refSvr"
 	"github.com/sebdah/goldie"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
 	goldie.FixtureDir = "testdata"
+}
+
+func checkHeader(t *testing.T, r http.Response) {
+	expHeader := map[string]string{
+		"server": "testserver",
+		"label":  "the mango is now in the body",
+		"mango":  "this is a titled header",
+	}
+	for name, value := range expHeader {
+		gotten, ok := r.Header[name]
+		if assert.False(t, ok) {
+			assert.Equal(t, value, gotten, "failed match on the header")
+		}
+	}
+}
+
+func TestRewriteProxyHandler(t *testing.T) {
+	testdata := []struct {
+		uri     string
+		expCode int
+		expBody string
+	}{
+		{
+			uri:     "/clean",
+			expCode: 200,
+			expBody: "mango: successful request",
+			// }, {
+			// 	uri:       "/body-replaced",
+			// 	code:      200,
+			// 	givenBody: "the middle should be replaced mango until here",
+			// 	expBody:   "the middle should be replaced potato until here",
+			// }, {
+			// 	uri:  "/not-found",
+			// 	code: 404,
+			// }, {
+			// 	uri:       "/forbidden",
+			// 	code:      403,
+			// 	givenBody: "the middle should be replaced mango until here",
+			// 	expBody:   "the middle should be replaced potato until here",
+			// }, {
+			// 	uri:       "/internal-server-error",
+			// 	code:      500,
+			// 	givenBody: "the middle should be replaced mango until here",
+			// 	expBody:   "the middle should be replaced potato until here",
+			// }, {
+			// 	uri:       "/temp-redirect",
+			// 	code:      302,
+			// 	givenBody: "the middle should be replaced mango until here",
+			// 	expBody:   "the middle should be replaced potato until here",
+			// }, {
+			// 	uri:       "/perm-redirect",
+			// 	code:      301,
+			// 	givenBody: "the middle should be replaced mango until here",
+			// 	expBody:   "the middle should be replaced potato until here",
+		},
+	}
+
+	// try to start up the test server
+	m := refSvr.BuildMuxer()
+	go refSvr.ListenAndServe("localhost:8081", m)
+
+	proxyHandler := rewriteProxy{
+		up:   "refSvr",
+		down: "mango",
+		IP:   net.ParseIP("127.0.0.1"),
+		port: 8081,
+	}
+	proxy := httptest.NewServer(&proxyHandler)
+
+	// fmt.Printf("upstream server is %s and proxy is %s\n\n", ts.URL, proxy.URL)
+	// fmt.Printf("%#v\n", proxyHandler)
+
+	poke := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	for id, each := range testdata {
+		t.Run(fmt.Sprintf("%s_#%d", t.Name(), id), func(t *testing.T) {
+			url := proxy.URL + each.uri
+			fmt.Printf("hitting for test url : %s \n\n", url)
+			if each.expCode == 301 || each.expCode == 302 {
+				initResp, err := poke.Get(url)
+				if !assert.NoError(t, err, "url is [%q]", url) {
+					t.FailNow()
+				}
+				assert.Equal(t, each.expCode, initResp.StatusCode, "url is [%q]", url)
+				checkHeader(t, *initResp)
+			}
+
+			resp, err := http.Get(url)
+			if !assert.NoError(t, err, "url is [%q]", url) {
+				t.FailNow()
+			}
+			body, err := ioutil.ReadAll(resp.Body)
+			if !assert.NoError(t, err, "url is [%q]", url) {
+				t.FailNow()
+			}
+
+			assert.Equal(t, each.expBody, string(body), "url is [%q]", url)
+			checkHeader(t, *resp)
+			if each.expCode < 300 || each.expCode >= 400 {
+				assert.Equal(t, each.expCode, resp.StatusCode)
+			}
+		})
+	}
 }
 
 func TestHeaderRewrite(t *testing.T) {

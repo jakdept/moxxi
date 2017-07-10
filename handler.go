@@ -2,11 +2,14 @@ package moxxi
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type rewriteProxy struct {
@@ -26,23 +29,74 @@ func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	fmt.Println(r)
+	fmt.Printf("proxy host %s - url %s\n\n", r.Host, r.URL.String())
+
+	replace := strings.NewReplacer(h.down, h.up)
+
 	// does not currently handle other ports
-	r.URL.Host = h.up
-	childRequest, err := http.NewRequest(r.Method, r.URL.String(), h.replacer.RewriteRequest(r.Body))
+	childRequest, err := http.NewRequest(r.Method, replace.Replace(r.URL.String()),
+		h.replacer.RewriteRequest(r.Body))
 	if err != nil {
 		panic(err)
 	}
 
-	h.headerRewrite(&r.Header, &childRequest.Header, strings.NewReplacer(h.down, h.up))
-	client := &http.Client{}
+	h.headerRewrite(&r.Header, &childRequest.Header, replace)
+	fmt.Printf("%#v\n", childRequest)
+	fmt.Printf("child host %s - url %s\n\n", r.Host, r.URL.String())
+
+	// dialer := &net.Dialer{
+	// 	KeepAlive: 30 * time.Second,
+	// 	DualStack: true,
+	// }
+
+	// func (d *dialer) DialContext(ctx context.Context, network, addr string) (net.Conn, err) {
+	// 			addr = fmt.Sprintf("%s:%s", h.IP,  h.port)
+	// 		return dialer.DialContext(ctx, network, addr)
+	// }
+
+	// client := &http.Client{
+	// 	Transport: http.Transport{
+	// 		   DialContext: (&net.Dialer{
+	//       KeepAlive: 30 * time.Second,
+	//       DualStack: true,
+	// 	},).dialContext,
+	// }
+
+	// dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
+	// 	addr = fmt.Sprintf("%s:%d", h.IP, h.port)
+	// 	return (&net.Dialer{}).DialContext(ctx, network, addr)
+	// }
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			// DialContext: dialContext,
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				addr = fmt.Sprintf("%s:%d", h.IP, h.port)
+				return (&net.Dialer{}).DialContext(ctx, network, addr)
+			},
+			// DialContext: (
+			// 	&net.Dialer{
+			//     Timeout:   30 * time.Second,
+			//     KeepAlive: 30 * time.Second,
+			//     DualStack: true,
+			// }).DialContext = dialContext,
+			MaxIdleConns:          10,
+			IdleConnTimeout:       30 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+
 	resp, err := client.Do(childRequest)
 	if err != nil {
 		panic(err)
 	}
 
 	h.replacer.Reverse()
-	writeHeader := w.Header()
-	h.headerRewrite(&resp.Header, &writeHeader, strings.NewReplacer(h.up, h.down))
+	replace = strings.NewReplacer(h.up, h.down)
+	parentHeader := w.Header()
+	h.headerRewrite(&resp.Header, &parentHeader, replace)
 	h.replacer.RewriteResponse(resp.Body, w)
 }
 
@@ -139,7 +193,8 @@ func (h *Replacer) wholeWriter(out io.Writer, data []byte) {
 	}
 }
 
-// RewriteRequest rewrites the request from old to new. It expects to run in a thread concurrently.
+// RewriteRequest rewrites the request from old to new.
+// It expects to run in a thread concurrently.
 // If there are any errors, they will be returned via the error channel.
 func (h *Replacer) RewriteRequest(in io.ReadCloser) io.ReadCloser {
 	pipeReader, pipeWriter := io.Pipe()
