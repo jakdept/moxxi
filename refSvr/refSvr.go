@@ -1,4 +1,4 @@
-package moxxi
+package refSvr
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 	"github.com/jakdept/dandler"
 )
 
-func RefServerMuxer() http.Handler {
+func BuildMuxer() *http.ServeMux {
 	funcList := []struct {
 		p string
 		h http.Handler
@@ -56,11 +56,11 @@ func RefServerMuxer() http.Handler {
 		mux.Handle(path.Clean(setup.p), setup.h)
 		mux.Handle(path.Clean(setup.p)+"/", setup.h)
 	}
-	h := dandler.Header("target", "this is a titled header", mux)
-	h = dandler.Header("label", "the target is now in the body", h)
-	return h
+	return mux
 }
 
-func RefServerListenAndServe(l string, h http.Handler) error {
+func ListenAndServe(l string, h http.Handler) error {
+	h = dandler.Header("target", "this is a titled header", h)
+	h = dandler.Header("label", "the target is now in the body", h)
 	return http.ListenAndServe(l, h)
 }
