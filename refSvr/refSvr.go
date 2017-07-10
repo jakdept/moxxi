@@ -14,10 +14,10 @@ func BuildMuxer() *http.ServeMux {
 	}{
 		{
 			"/",
-			dandler.Success("target: successful request"),
+			dandler.Success("refSvr: successful request"),
 		}, {
 			"/200",
-			dandler.Success("target: successful request"),
+			dandler.Success("refSvr: successful request"),
 		}, {
 			"/301",
 			http.RedirectHandler("/", http.StatusMovedPermanently),
@@ -26,7 +26,7 @@ func BuildMuxer() *http.ServeMux {
 			http.RedirectHandler("/", http.StatusFound),
 		}, {
 			"/304",
-			dandler.ResponseCode(http.StatusNotModified, "target: not modified"),
+			dandler.ResponseCode(http.StatusNotModified, "refSvr: not modified"),
 		}, {
 			"/307",
 			http.RedirectHandler("/", http.StatusTemporaryRedirect),
@@ -35,19 +35,19 @@ func BuildMuxer() *http.ServeMux {
 			http.RedirectHandler("/", http.StatusPermanentRedirect),
 		}, {
 			"/401",
-			dandler.ResponseCode(http.StatusUnauthorized, "target: authorization required"),
+			dandler.ResponseCode(http.StatusUnauthorized, "refSvr: authorization required"),
 		}, {
 			"/403",
-			dandler.ResponseCode(http.StatusForbidden, "target: authorization required"),
+			dandler.ResponseCode(http.StatusForbidden, "refSvr: authorization required"),
 		}, {
 			"/404",
-			dandler.ResponseCode(http.StatusNotFound, "target: not found"),
+			dandler.ResponseCode(http.StatusNotFound, "refSvr: not found"),
 		}, {
 			"/500",
-			dandler.ResponseCode(http.StatusInternalServerError, "target: internal server error"),
+			dandler.ResponseCode(http.StatusInternalServerError, "refSvr: internal server error"),
 		}, {
 			"/503",
-			dandler.ResponseCode(http.StatusServiceUnavailable, "target: gateway timeout"),
+			dandler.ResponseCode(http.StatusServiceUnavailable, "refSvr: gateway timeout"),
 		},
 	}
 
@@ -60,7 +60,8 @@ func BuildMuxer() *http.ServeMux {
 }
 
 func ListenAndServe(l string, h http.Handler) error {
-	h = dandler.Header("target", "this is a titled header", h)
-	h = dandler.Header("label", "the target is now in the body", h)
+	h = dandler.Header("server", "testserver", h)
+	h = dandler.Header("refSvr", "this is a titled header", h)
+	h = dandler.Header("label", "the refSvr is now in the body", h)
 	return http.ListenAndServe(l, h)
 }
