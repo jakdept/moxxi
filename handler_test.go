@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -78,14 +79,18 @@ func TestRewriteProxyHandler(t *testing.T) {
 	}
 
 	// try to start up the test server
-	m := refSvr.BuildMuxer()
-	go refSvr.ListenAndServe("localhost:8081", m)
+	source := httptest.NewServer(refSvr.BuildMuxer())
+	host, port := (&rewriteProxy{}).splitHostPort(strings.TrimPrefix(source.URL, "http://"))
+	fmt.Println("after splitting host and port: ", host, port)
+
+	intPort, err := strconv.Atoi(port)
+	assert.NoError(t, err)
 
 	proxyHandler := rewriteProxy{
-		up:   "refSvr",
+		up:   host,
 		down: "mango",
-		IP:   net.ParseIP("127.0.0.1"),
-		port: 8081,
+		IP:   net.ParseIP(host),
+		port: intPort,
 	}
 	proxy := httptest.NewServer(&proxyHandler)
 
@@ -101,6 +106,7 @@ func TestRewriteProxyHandler(t *testing.T) {
 	for id, each := range testdata {
 		t.Run(fmt.Sprintf("%s_#%d", t.Name(), id), func(t *testing.T) {
 			url := proxy.URL + each.uri
+			fmt.Println("test poke url:", url)
 			fmt.Printf("hitting for test url : %s \n\n", url)
 			if each.expCode == 301 || each.expCode == 302 {
 				initResp, err := poke.Get(url)
@@ -166,12 +172,11 @@ func TestHeaderRewrite(t *testing.T) {
 	}
 
 	h := rewriteProxy{}
-	result := http.Header{}
 
 	replacer := strings.NewReplacer("text", "poop")
-	h.headerRewrite(&testdata, &result, replacer)
+	result := h.headerRewrite(&testdata, replacer)
 
-	for name, contents := range result {
+	for name, contents := range *result {
 		assert.Equal(t, expected[name], contents, "key was %s", name)
 	}
 }

@@ -2,12 +2,12 @@ package moxxi
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -18,16 +18,15 @@ type rewriteProxy struct {
 	down     string // the downstream domain
 	up       string // the upstream domain
 	port     int
-	portTLS  int
 	IP       net.IP
 }
 
 func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if err, ok := recover().(error); ok && err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}()
+	// defer func() {
+	// 	if err, ok := recover().(error); ok && err != nil {
+	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	}
+	// }()
 
 	fmt.Println(r)
 	fmt.Printf("proxy host %s - url %s\n\n", r.Host, r.URL.String())
@@ -35,52 +34,59 @@ func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	replace := strings.NewReplacer(h.down, h.up)
 
 	// does not currently handle other ports
-	childRequest, err := http.NewRequest(r.Method, replace.Replace(r.URL.String()),
-		h.replacer.RewriteRequest(r.Body))
+	childRequest := &http.Request{
+		Method:     r.Method,
+		URL:        r.URL,
+		Proto:      r.Proto,
+		ProtoMajor: r.ProtoMajor,
+		ProtoMinor: r.ProtoMinor,
+		Header:     *h.headerRewrite(&r.Header, replace),
+		Body:       h.replacer.RewriteRequest(r.Body),
+		Close:      false,
+	}
+
+	if childRequest.URL.Host == "" {
+		childRequest.URL.Host = r.Host
+	}
+	host, portStr, err := net.SplitHostPort(childRequest.URL.Host)
 	if err != nil {
 		panic(err)
 	}
 
-	h.headerRewrite(&r.Header, &childRequest.Header, replace)
-	fmt.Printf("%#v\n", childRequest)
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		panic(err)
+	}
+
+	if childRequest.URL.Scheme != "https" &&
+		childRequest.URL.Scheme != "http" &&
+		port == 443 {
+		childRequest.URL.Scheme = "https"
+	} else if childRequest.URL.Scheme != "https" &&
+		childRequest.URL.Scheme != "http" {
+		childRequest.URL.Scheme = "http"
+	}
+
+	host = replace.Replace(host)
+	if h.port != 0 {
+		port = h.port
+	}
+
+	childRequest.URL.Host = host + ":" + strconv.Itoa(port)
+
+	fmt.Printf("%#v\n\n", *childRequest.URL)
+	fmt.Printf("%#v\n\n", childRequest)
 	fmt.Printf("child host %s - url %s\n\n", r.Host, r.URL.String())
 
-	// dialer := &net.Dialer{
-	// 	KeepAlive: 30 * time.Second,
-	// 	DualStack: true,
-	// }
-
-	// func (d *dialer) DialContext(ctx context.Context, network, addr string) (net.Conn, err) {
-	// 			addr = fmt.Sprintf("%s:%s", h.IP,  h.port)
-	// 		return dialer.DialContext(ctx, network, addr)
-	// }
-
-	// client := &http.Client{
-	// 	Transport: http.Transport{
-	// 		   DialContext: (&net.Dialer{
-	//       KeepAlive: 30 * time.Second,
-	//       DualStack: true,
-	// 	},).dialContext,
-	// }
-
-	// dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
-	// 	addr = fmt.Sprintf("%s:%d", h.IP, h.port)
-	// 	return (&net.Dialer{}).DialContext(ctx, network, addr)
-	// }
+	dialer, err := StaticDialContext(h.IP, h.port)
+	if err != nil {
+		panic(err)
+	}
 
 	client := &http.Client{
 		Transport: &http.Transport{
-			// DialContext: dialContext,
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				addr = fmt.Sprintf("%s:%d", h.IP, h.port)
-				return (&net.Dialer{}).DialContext(ctx, network, addr)
-			},
-			// DialContext: (
-			// 	&net.Dialer{
-			//     Timeout:   30 * time.Second,
-			//     KeepAlive: 30 * time.Second,
-			//     DualStack: true,
-			// }).DialContext = dialContext,
+			Proxy:                 nil,
+			DialContext:           dialer,
 			MaxIdleConns:          10,
 			IdleConnTimeout:       30 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,
@@ -96,16 +102,35 @@ func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.replacer.Reverse()
 	replace = strings.NewReplacer(h.up, h.down)
 	parentHeader := w.Header()
-	h.headerRewrite(&resp.Header, &parentHeader, replace)
+	h.headerCopy(h.headerRewrite(&resp.Header, replace), &parentHeader)
+	// h.headerRewrite(&resp.Header, &parentHeader, replace)
 	h.replacer.RewriteResponse(resp.Body, w)
 }
 
-func (h *rewriteProxy) headerRewrite(in, out *http.Header, mod *strings.Replacer) {
+func (h *rewriteProxy) splitHostPort(url string) (string, string) {
+	if !strings.Contains(url, ":") {
+		return url, ""
+	}
+	parts := strings.SplitN(url, ":", 2)
+	return parts[0], parts[1]
+}
+
+func (h *rewriteProxy) headerCopy(in, out *http.Header) {
+	for headerName, headerSlice := range *in {
+		for _, eachHeader := range headerSlice {
+			out.Add(headerName, eachHeader)
+		}
+	}
+}
+
+func (h *rewriteProxy) headerRewrite(in *http.Header, mod *strings.Replacer) *http.Header {
+	out := &http.Header{}
 	for headerName, headerSlice := range *in {
 		for _, eachHeader := range headerSlice {
 			out.Add(mod.Replace(headerName), mod.Replace(eachHeader))
 		}
 	}
+	return out
 }
 
 // Replacer allows you to rewrite content, replacing old with new. It carries
