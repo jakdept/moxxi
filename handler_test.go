@@ -19,8 +19,8 @@ func init() {
 }
 
 func TestRewriteProxyHandler(t *testing.T) {
-	// ##TODO##
-	t.Skip()
+	// #TODO#
+	// t.Skip()
 	testdata := []struct {
 		uri     string
 		expCode int
@@ -62,7 +62,7 @@ func TestRewriteProxyHandler(t *testing.T) {
 	}
 
 	// try to start up the test server
-	source := httptest.NewServer(BuildRefSvrMuxer())
+	source := httptest.NewServer(AddHeaders(BuildRefSvrMuxer()))
 	host, port, err := net.SplitHostPort(strings.TrimPrefix(source.URL, "http://"))
 	assert.NoError(t, err)
 	fmt.Println("after splitting host and port: ", host, port)
@@ -71,7 +71,7 @@ func TestRewriteProxyHandler(t *testing.T) {
 	assert.NoError(t, err)
 
 	proxyHandler := rewriteProxy{
-		up:   host,
+		up:   "refSvr",
 		down: "mango",
 		IP:   net.ParseIP(host),
 		port: intPort,
@@ -111,11 +111,27 @@ func TestRewriteProxyHandler(t *testing.T) {
 			}
 
 			assert.Equal(t, each.expBody, string(body), "url is [%q]", url)
-			checkCleanHeader(t, *resp)
+			// #TODO#
+			checkProxiedHeader(t, *resp)
 			if each.expCode < 300 || each.expCode >= 400 {
 				assert.Equal(t, each.expCode, resp.StatusCode)
 			}
 		})
+	}
+}
+
+func checkProxiedHeader(t *testing.T, r http.Response) {
+	expHeader := map[string]string{
+		"Server": "testserver",
+		"Mango":  "this is a titled header",
+		"Label":  "the mango is now in the body",
+	}
+	for name, value := range expHeader {
+		gotten, ok := r.Header[name]
+		if assert.True(t, ok,
+			"the header [%s] is not there - %#v\n", name, r.Header) {
+			assert.Equal(t, value, gotten[0], "failed match on the header")
+		}
 	}
 }
 
