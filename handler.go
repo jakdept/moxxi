@@ -21,19 +21,41 @@ type rewriteProxy struct {
 	IP       net.IP
 }
 
+func (h *rewriteProxy) setup() {
+	dialer, err := StaticDialContext(h.IP, h.port)
+	if err != nil {
+		panic(err)
+	}
+
+	h.client = &http.Client{
+		Transport: &http.Transport{
+			Proxy:                 nil,
+			DialContext:           dialer,
+			MaxIdleConns:          10,
+			IdleConnTimeout:       30 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+
+}
+
 func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// defer func() {
-	// 	if err, ok := recover().(error); ok && err != nil {
-	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	}
-	// }()
+	defer func() {
+		if err, ok := recover().(error); ok && err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}()
+
+	if h.client == nil {
+		h.setup()
+	}
 
 	fmt.Println(r)
 	fmt.Printf("proxy host %s - url %s\n\n", r.Host, r.URL.String())
 
 	replace := strings.NewReplacer(h.down, h.up)
 
-	// does not currently handle other ports
 	childRequest := &http.Request{
 		Method:     r.Method,
 		URL:        r.URL,
@@ -45,14 +67,16 @@ func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Close:      false,
 	}
 
+	// populate an empty host field
 	if childRequest.URL.Host == "" {
 		childRequest.URL.Host = r.Host
 	}
+
+	// break the host and port apart for the request
 	host, portStr, err := net.SplitHostPort(childRequest.URL.Host)
 	if err != nil {
 		panic(err)
 	}
-
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		panic(err)
@@ -72,29 +96,13 @@ func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		port = h.port
 	}
 
-	childRequest.URL.Host = host + ":" + strconv.Itoa(port)
+	childRequest.URL.Host = net.JoinHostPort(host, strconv.Itoa(port))
 
 	fmt.Printf("%#v\n\n", *childRequest.URL)
 	fmt.Printf("%#v\n\n", childRequest)
 	fmt.Printf("child host %s - url %s\n\n", r.Host, r.URL.String())
 
-	dialer, err := StaticDialContext(h.IP, h.port)
-	if err != nil {
-		panic(err)
-	}
-
-	client := &http.Client{
-		Transport: &http.Transport{
-			Proxy:                 nil,
-			DialContext:           dialer,
-			MaxIdleConns:          10,
-			IdleConnTimeout:       30 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-	}
-
-	resp, err := client.Do(childRequest)
+	resp, err := h.client.Do(childRequest)
 	if err != nil {
 		panic(err)
 	}
@@ -105,14 +113,6 @@ func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.headerCopy(h.headerRewrite(&resp.Header, replace), &parentHeader)
 	// h.headerRewrite(&resp.Header, &parentHeader, replace)
 	h.replacer.RewriteResponse(resp.Body, w)
-}
-
-func (h *rewriteProxy) splitHostPort(url string) (string, string) {
-	if !strings.Contains(url, ":") {
-		return url, ""
-	}
-	parts := strings.SplitN(url, ":", 2)
-	return parts[0], parts[1]
 }
 
 func (h *rewriteProxy) headerCopy(in, out *http.Header) {
