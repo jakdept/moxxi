@@ -2,15 +2,12 @@ package moxxi
 
 import (
 	"context"
-	"log"
 	"net"
 )
 
 func StaticDialContext(address net.IP, port int) (
 	func(ctx context.Context, network, ignoredAddress string) (net.Conn, error),
 	error) {
-
-	log.Printf("ip: %#v\n\n", address)
 
 	tcpAddr := net.TCPAddr{
 		IP:   address,
