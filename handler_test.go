@@ -14,27 +14,12 @@ import (
 
 	"bytes"
 
-	"github.com/jakdept/moxxi/refSvr"
 	"github.com/sebdah/goldie"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
 	goldie.FixtureDir = "testdata"
-}
-
-func checkHeader(t *testing.T, r http.Response) {
-	expHeader := map[string]string{
-		"server": "testserver",
-		"label":  "the mango is now in the body",
-		"mango":  "this is a titled header",
-	}
-	for name, value := range expHeader {
-		gotten, ok := r.Header[name]
-		if assert.False(t, ok) {
-			assert.Equal(t, value, gotten, "failed match on the header")
-		}
-	}
 }
 
 func TestRewriteProxyHandler(t *testing.T) {
@@ -80,7 +65,7 @@ func TestRewriteProxyHandler(t *testing.T) {
 	}
 
 	// try to start up the test server
-	source := httptest.NewServer(refSvr.BuildMuxer())
+	source := httptest.NewServer(BuildRefSvrMuxer())
 	host, port, err := net.SplitHostPort(strings.TrimPrefix(source.URL, "http://"))
 	assert.NoError(t, err)
 	fmt.Println("after splitting host and port: ", host, port)
@@ -116,7 +101,7 @@ func TestRewriteProxyHandler(t *testing.T) {
 					t.FailNow()
 				}
 				assert.Equal(t, each.expCode, initResp.StatusCode, "url is [%q]", url)
-				checkHeader(t, *initResp)
+				checkCleanHeader(t, *initResp)
 			}
 
 			resp, err := http.Get(url)
@@ -129,7 +114,7 @@ func TestRewriteProxyHandler(t *testing.T) {
 			}
 
 			assert.Equal(t, each.expBody, string(body), "url is [%q]", url)
-			checkHeader(t, *resp)
+			checkCleanHeader(t, *resp)
 			if each.expCode < 300 || each.expCode >= 400 {
 				assert.Equal(t, each.expCode, resp.StatusCode)
 			}
