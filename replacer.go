@@ -21,7 +21,8 @@ func (h *Replacer) Reverse() {
 	h.old, h.new = h.new, h.old
 }
 
-func (h *Replacer) replace(in io.Reader, out io.Writer) {
+func (h *Replacer) Replace(in io.Reader, out io.Writer) <-chan struct{} {
+	// check the required parameters
 	if h.memUsage < 1 {
 		h.memUsage = 1 << 20
 	}
@@ -29,29 +30,48 @@ func (h *Replacer) replace(in io.Reader, out io.Writer) {
 		panic(errors.New("not enough memory allocated for memory slice"))
 	}
 
+	// make and prime the done marker
+	done := make(chan struct{})
+	go func() {
+		done <- struct{}{}
+	}()
+	<-done
+
+	go h.replaceLoop(in, out, done)
+	return done
+}
+
+func (h *Replacer) wholeWriter(out io.Writer, data []byte) {
+	var bc, w int
+	var err error
+	for w < len(data) {
+		if bc, err = out.Write(data[w:]); err != nil {
+			panic(err)
+		}
+		w += bc
+	}
+}
+
+func (h *Replacer) replaceLoop(in io.Reader, out io.Writer, done chan<- struct{}) {
+	defer close(done)
+
 	type pair struct {
 		l int
 		r int
 	}
-
 	var err error
 	var work pair
 	var byteCount, next int
 
 	// the maximum size (in bytes) of a single utf8 char allowing a bit of grace
 	bit := 10
-
 	data := make([]byte, h.memUsage)
 	// cheat the first copy
-
 	work.l = len(data)
 	work.r = len(data)
 
 	for {
 		byteCount = copy(data, data[work.l:work.r])
-
-		// my problem is that i'm not bounding the copy slice below
-		// if i drop work.r into it, i might have a shrinking buffer on short reads?
 		work.r, err = in.Read(data[byteCount:])
 		work.r += byteCount
 
@@ -76,19 +96,7 @@ func (h *Replacer) replace(in io.Reader, out io.Writer) {
 			h.wholeWriter(out, h.new)
 		}
 	}
-
 	h.wholeWriter(out, bytes.Replace(data[work.l:work.r], h.old, h.new, -1))
-}
-
-func (h *Replacer) wholeWriter(out io.Writer, data []byte) {
-	var bc, w int
-	var err error
-	for w < len(data) {
-		if bc, err = out.Write(data[w:]); err != nil {
-			panic(err)
-		}
-		w += bc
-	}
 }
 
 // RewriteRequest rewrites the request from old to new.
@@ -97,12 +105,12 @@ func (h *Replacer) wholeWriter(out io.Writer, data []byte) {
 func (h *Replacer) RewriteRequest(in io.ReadCloser) io.ReadCloser {
 	pipeReader, pipeWriter := io.Pipe()
 	// make sure you close the input
-	defer in.Close()
-	go h.replace(in, pipeWriter)
+	// defer in.Close()
+	done := h.Replace(in, pipeWriter)
+	go func() {
+		<-done
+		pipeWriter.Close()
+		// pipeReader.Close()
+	}()
 	return pipeReader
-}
-
-func (h *Replacer) RewriteResponse(in io.ReadCloser, out io.Writer) {
-	defer in.Close()
-	go h.replace(in, out)
 }

@@ -3,6 +3,7 @@ package moxxi
 import (
 	"bytes"
 	"errors"
+	"io"
 	"os"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 
 func TestReplacerVanilla(t *testing.T) {
 	t.Parallel()
+	// should be no error
 	defer func() {
 		errInt := recover()
 		if errInt != nil {
@@ -36,7 +38,8 @@ func TestReplacerVanilla(t *testing.T) {
 		memUsage: 50,
 	}
 	buf := &bytes.Buffer{}
-	r.replace(file, buf)
+	done := r.Replace(file, buf)
+	<-done
 	goldie.Assert(t, t.Name(), buf.Bytes())
 }
 func TestReplacerSmallBuffer(t *testing.T) {
@@ -64,7 +67,8 @@ func TestReplacerSmallBuffer(t *testing.T) {
 		memUsage: 1, // far too short for the buffer size
 	}
 	buf := &bytes.Buffer{}
-	r.replace(file, buf)
+	done := r.Replace(file, buf)
+	<-done
 }
 
 func TestReplacerReversed(t *testing.T) {
@@ -94,6 +98,47 @@ func TestReplacerReversed(t *testing.T) {
 	}
 	buf := &bytes.Buffer{}
 	r.Reverse()
-	r.replace(file, buf)
+	done := r.Replace(file, buf)
+	<-done
 	goldie.Assert(t, t.Name(), buf.Bytes())
+}
+
+func TestReplacerEOF(t *testing.T) {
+	t.Parallel()
+	// should be no error
+	defer func() {
+		errInt := recover()
+		if errInt != nil {
+			err, ok := errInt.(error)
+			if !assert.True(t, ok) {
+				t.FailNow()
+			}
+			if !assert.NoError(t, err) {
+				t.FailNow()
+			}
+		}
+	}()
+
+	file, err := os.Open("testdata/technologic.txt")
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+	defer file.Close()
+
+	r := Replacer{
+		old:      []byte(" it"),
+		new:      []byte(" that"),
+		memUsage: 50,
+	}
+
+	junk := make([]byte, 2<<20)
+	output := r.RewriteRequest(file)
+	for i := 0; i < 10000; i++ {
+		_, err = output.Read(junk)
+		if err != nil {
+			break
+		}
+	}
+
+	assert.Equal(t, io.EOF, err)
 }
