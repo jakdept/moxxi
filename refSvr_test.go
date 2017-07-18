@@ -70,6 +70,7 @@ func TestRefSvr(t *testing.T) {
 
 	for _, test := range testdata {
 		t.Run("TestRefSvr"+test.loc, func(t *testing.T) {
+			t.Parallel()
 			resp, err := poke.Get(s.URL + test.loc)
 			if !assert.NoError(t, err) {
 				t.FailNow()
