@@ -21,10 +21,10 @@ type rewriteProxy struct {
 	IP       net.IP
 }
 
-func (h *rewriteProxy) setup() {
+func (h *rewriteProxy) setup() error {
 	dialer, err := StaticDialContext(h.IP, h.port)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	h.client = &http.Client{
@@ -37,7 +37,7 @@ func (h *rewriteProxy) setup() {
 			ExpectContinueTimeout: 1 * time.Second,
 		},
 	}
-
+	return nil
 }
 
 func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +48,9 @@ func (h *rewriteProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	if h.client == nil {
-		h.setup()
+		if err := h.setup(); err != nil {
+			panic(err)
+		}
 	}
 
 	fmt.Println(r)
