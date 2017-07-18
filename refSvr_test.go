@@ -9,6 +9,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func checkCleanHeader(t *testing.T, r http.Response) {
+	expHeader := map[string]string{
+		"Server": "testserver",
+		"Refsvr": "this is a titled header",
+		"Label":  "the refSvr is now in the body",
+	}
+	for name, value := range expHeader {
+		gotten, ok := r.Header[name]
+		if assert.True(t, ok,
+			"the header is not there - %#v\n", r.Header) {
+			assert.Equal(t, value, gotten[0], "failed match on the header")
+		}
+	}
+}
+
 func TestRefSvr(t *testing.T) {
 	testdata := []struct {
 		loc  string
@@ -76,6 +91,7 @@ func TestRefSvr(t *testing.T) {
 				t.FailNow()
 			}
 			assert.Equal(t, test.code, resp.StatusCode)
+			checkCleanHeader(t, *resp)
 
 			if test.body == "" {
 				t.SkipNow()

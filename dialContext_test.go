@@ -121,6 +121,7 @@ func TestStaticDialContext(t *testing.T) {
 				t.FailNow()
 			}
 			assert.Equal(t, test.code, resp.StatusCode)
+			checkCleanHeader(t, *resp)
 
 			if test.body == "" {
 				t.SkipNow()
