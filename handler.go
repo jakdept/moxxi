@@ -10,12 +10,13 @@ import (
 )
 
 type rewriteProxy struct {
-	client   *http.Client
-	replacer Replacer
-	down     string // the downstream domain
-	up       string // the upstream domain
-	port     int
-	IP       net.IP
+	client      *http.Client
+	replacer    Replacer
+	strReplacer strings.Replacer
+	down        string // the downstream domain
+	up          string // the upstream domain
+	port        int
+	IP          net.IP
 }
 
 func (h *rewriteProxy) setup() error {
@@ -34,6 +35,12 @@ func (h *rewriteProxy) setup() error {
 			ExpectContinueTimeout: 1 * time.Second,
 		},
 	}
+	h.replacer = Replacer{
+		old: []byte(h.down),
+		new: []byte(h.up),
+	}
+
+	h.strReplacer = *strings.NewReplacer(h.down, h.up)
 	return nil
 }
 

@@ -2,6 +2,7 @@ package moxxi
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -94,17 +95,29 @@ func TestRewriteProxyHandler(t *testing.T) {
 			fmt.Printf("hitting for test url : %s \n\n", url)
 			if each.expCode == 301 || each.expCode == 302 {
 				initResp, err := poke.Get(url)
-				if !assert.NoError(t, err, "url is [%q]", url) {
-					t.FailNow()
+				if err != nil {
+					if err != io.EOF {
+						t.Errorf("got back an error - %v", err)
+						t.Fail()
+					}
 				}
+				// if !assert.NoError(t, err, "url is [%q]", url) {
+				// 	t.FailNow()
+				// }
 				assert.Equal(t, each.expCode, initResp.StatusCode, "url is [%q]", url)
-				checkCleanHeader(t, *initResp)
+				checkProxiedHeader(t, *initResp)
 			}
 
 			resp, err := http.Get(url)
-			if !assert.NoError(t, err, "url is [%q]", url) {
-				t.FailNow()
+			if err != nil {
+				if err != io.EOF {
+					t.Errorf("got back an error - %v", err)
+					t.Fail()
+				}
 			}
+			// if !assert.NoError(t, err, "url is [%q]", url) {
+			// 	t.FailNow()
+			// }
 			body, err := ioutil.ReadAll(resp.Body)
 			if !assert.NoError(t, err, "url is [%q]", url) {
 				t.FailNow()
